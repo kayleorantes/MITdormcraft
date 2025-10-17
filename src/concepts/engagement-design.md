@@ -2,7 +2,7 @@
 
 ## Core Design Rationale
 
-This concept is entirely new and was created specifically to isolate all **social interaction logic** from the core `DesignPost` concept, which is crucial for achieving **strict modularity** and adhering to the principle of **separation of concerns**.
+This concept is entirely new and was created specifically to isolate all social interaction logic from the core `DesignPost` concept, which is crucial for achieving strict modularity and adhering to the principle of separation of concerns.
 
 ### Initial Design Decisions:
 
@@ -17,7 +17,7 @@ This concept is entirely new and was created specifically to isolate all **socia
 
 ### Rationale for State Structure (Refinements):
 
-1.  **Unique `commentID`s:** I included a **unique `commentID`** for each comment object within the `comments` list.
+1.  **Unique `commentID`s:** I included a unique `commentID` for each comment object within the `comments` list.
     * **Rationale:** While initially simpler to omit, a unique ID is essential for future application capabilities, such as allowing a user to `deleteComment(postID, commentID, userID)` or `editComment(...)`. Without this ID, targeting a single comment in a long list would be difficult and inefficient.
 
 2.  **`commentCount` Field (Performance Cache):** A dedicated `commentCount` field is maintained in the state.
