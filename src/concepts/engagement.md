@@ -6,6 +6,9 @@
 
 **state**:
 - a set of Engagements with
+
+    <br>
+    <br>
     postID     String                             // The post being engaged with (acts as the ID for this document)
   <br>
     upvotes    Set<UserID>                        // A set of user IDs who have upvoted
