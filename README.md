@@ -2,55 +2,8 @@
 
 In this assignment, you'll begin creating your backend by implementing your concepts in TypeScript. You'll learn to use Context, a simple CLI tool and a new way to both collaborate with LLMs and drive your implementation through design.
 
-# Setup (Prep)
 
-## 0. Fork this repository
 
-First, [fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo#forking-a-repository) this repository, and **rename** it to your desired project name, and give a description of your project.
-
-## 1. Install Deno
-
-[Install from Deno's website](https://deno.com)
-
-Deno is a successor to Node.js (by the same creator, Ryan Dahl) that greatly simplifies tooling, is more secure by default, and is backwards-compatible with the larger ecosystem. Check out Deno's [extensive documentation](https://docs.deno.com/runtime/) for various helpful guides on a wide variety of common application needs and [integrations](https://docs.deno.com/examples/).
-
-**Note:** when importing from `npm` packages, prefix with `npm:` as in: 
-```typescript
-import { MongoClient } from "npm:mongo"
-```
-
-For VSCode users, consider also installing the Deno [extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) and referring to the [docs](https://docs.deno.com/runtime/reference/vscode/) if you'd like to configure behavior.
-## 2. Compile Context
-
-To create a convenient binary, run the following command from the root of the directory:
-```shell
-deno compile -A --output ctx .ctx/context.ts
-```
-
-## 3. Setup Gemini
-
-Copy or change `.env.template` to the environment file: `.env` and insert your Gemini API key:
-
-```env
-GEMINI_API_KEY=YOUR_KEY_HERE
-GEMINI_MODEL=gemini-2.5-flash
-```
-You can choose any [models](https://ai.google.dev/gemini-api/docs/models) using `GEMINI_MODEL`, such as `gemini-2.5-flash-lite` for faster responses, or `gemini-2.5-pro` for higher quality.
-
-You may also edit the `./geminiConfig.json` file to change the parameters according to any of the [GenerationConfig](https://ai.google.dev/api/generate-content#v1beta.GenerationConfig) options, including turning on/off thinking, limiting tokens, etc.
-
-## 4. Setup your MongoDB Atlas Cluster (free)
-
-For this project, we'll be using MongoDB as the database. To get started, use either the slides or the instructions:
-### Slides
-[MongoDB Setup](https://docs.google.com/presentation/d/1DBOWIQ2AAGQPDRgmnad8wN9S9M955LcHYZQlnbu-QCs/edit?usp=sharing)
-### Instructions
-1. Create your [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) account.
-2. When selecting a template, choose the __free__ option, M0.
-4. At the Security Quickstart page, select how you want to authenticate your connection and keep the rest of the defaults. Make sure to allow access to all IPs as shown in [this slide](https://docs.google.com/presentation/d/1DBOWIQ2AAGQPDRgmnad8wN9S9M955LcHYZQlnbu-QCs/edit?usp=sharing).
-5. Once created, click the __CONNECT__ button, select __driver__, and copy the srv connection string. If using username and password, the url should look something like this: `mongodb+srv://<username>:<password>@cluster0.p82ijqd.mongodb.net/?retryWrites=true&w=majority`. Make sure to replace username and password with your actual values.
-6. Add your connection url (without `<` and `>`) to `MONGODB_URL=<connection url>` to your `.env` file. 
-7. Give your database a name under `DB_NAME=<your database name>`.
 
 ## 5. Install Obsidian
 
@@ -67,13 +20,7 @@ This should be correctly set already, but under Obsidian -> Settings -> Files an
 
 ![](media/obsidian_settings.png)
 
-# Exercise 0 
 
-Context is a simple Markdown-based framework for building design knowledge and collaborating with an LLM. There is no additional syntax: any text-based repository with code of any language with documentation written as Markdown is compatible.
-
-## 0. Note
-
-**Important:** do not delete or modify anything from the `context` directory. Content is hashed by ID, meaning that corruption can be detected, but not recovered from automatically. This pairs nicely with git in case you mess up, so don't forget to commit once in a while!
 
 ## 1. Getting started with Context
 
