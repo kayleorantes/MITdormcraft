@@ -7,7 +7,9 @@
 **state**:
 - a set of Engagements with
     postID     String                             // The post being engaged with (acts as the ID for this document)
+  <br>
     upvotes    Set<UserID>                        // A set of user IDs who have upvoted
+    <br>
     comments   List<{commentID: String, authorID: String, text: String, createdAt: Date}> // A list of comments
 
 **actions**:
