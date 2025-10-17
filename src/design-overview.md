@@ -1,20 +1,18 @@
-# Overall Design Notes: DormGram
+# Overall Design Notes: MITdormcraft Backend
 
-This document outlines the final design of the "DormGram" application, the rationale behind pivoting from the original idea, and a summary of key moments during the backend development process.
+This document outlines the final design of the MITdormcraft application, the rationale behind the pivot from the original complex planning idea, and a summary of key moments during the backend development process.
 
----
 
-### ## Pivot from DormCraft to DormGram
+## Pivot Rationale: From Planning to Inspiration
 
-The project's initial concept was "DormCraft," a collaborative tool for students to plan dorm room layouts before moving in. While this was a strong idea, I pivoted to "DormGram," an "Instagram for dorms," for several key reasons aligned with the course's principles:
+The project's initial vision was "DormCraft," a tool for students to collaboratively plan and lay out dorm rooms. I have pivoted the application's focus to be a place for inspiration and sharing for MIT dorm room decoration. The key reasons for this shift are aligned with the Assignment 4a's core goals:
 
-1.  **Clearer Modularity**: The "Instagram" model lends itself perfectly to concept-oriented design. The ideas of a `User`, a `Post`, a `Room Template` (like a category), and `Engagement` (likes/comments) are distinct and self-contained. This made it much easier to design concepts with no direct dependencies, which was a core requirement.
-2.  **More Focused User Value**: Instead of solving the logistical problem of layout planning, DormGram focuses on inspiration and community. It allows students to creatively share their personalized spaces and helps incoming students see the real potential of their future rooms, addressing the anxiety of the "unknown" in a different, more engaging way.
-3.  **Simpler State Management**: The state for DormGram's concepts is more straightforward than DormCraft's, which would have required complex state to manage furniture positions, room dimensions, and real-time collaborative sessions. This allowed me to focus on mastering the essentials of the backend implementation and testing workflow.
+1.  **Clearer Modularity (Concept Design Focus)**: The inspiration/sharing model lends itself perfectly to modular concept-oriented design. The ideas of a `User`, a `Post`, a `Room Template` (as a category), and `Engagement` (likes/comments) are distinct and self-contained. This separation was crucial for designing concepts with **no direct dependencies**, a core requirement of the course.
+2.  **More Focused User Value (Simpler Goal)**: The application now solves the problem of "What can my room look like?" by focusing on users looking at uploaded pictures of their dorm size and getting inspiration for their own room. The complex logistical problem of real-time collaborative planning has been removed.
+3.  **Simpler State Management**: The state for the current concepts is far simpler than the furniture position/dimension management required by the planning idea. This allowed me to concentrate entirely on mastering the essentials of backend implementation and the Deno/MongoDB testing workflow.
 
----
 
-### ## Final Application Architecture
+## Final Application Architecture
 
 The application is built on four independent, modular concepts that work together to create the full user experience:
 
@@ -23,11 +21,10 @@ The application is built on four independent, modular concepts that work togethe
 * **`DesignPost`**: The core content concept. It links a `User` and a `RoomTemplate` to a piece of content (an image and description) but is completely unaware of social interactions.
 * **`Engagement`**: The social layer. This concept is responsible for all comments and upvotes related to a `DesignPost`, but it doesn't store any of the post's actual content.
 
-This separation ensures that the system is robust and extensible. For example, we could add a new type of engagement (like "bookmarks") by only modifying the `Engagement` concept, with no changes needed to any other part of the application.
+This structure ensures the system is robust and easily extensible. For instance, adding a new feature (like "bookmarks") requires modifying only the `Engagement` concept, with no changes needed to any other part of the application.
 
----
 
-### ## 💡 Interesting Moments in Development
+## 💡 Interesting Moments in Development
 
 Here are 5 key moments from the implementation process. Each represents a significant learning step or a problem-solving discovery.
 

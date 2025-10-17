@@ -6,12 +6,20 @@
 
 **state**:
 - a set of Posts with
+<br>
+<br>
     postID       String   // Unique identifier (MongoDB ObjectId)
+    <br>
     authorID     String   // Reference to the User who created it
+    <br>
     templateID   String   // Reference to the RoomTemplate it represents
+    <br>
     title        String   // A title for the design, e.g., "Cozy Minimalist Setup"
+    <br>
     description  String   // Text describing the design
+    <br>
     imageURL     String   // URL to the hosted image of the dorm room
+    <br>
     createdAt    Date     // Time of post creation for sorting
 
 **actions**:

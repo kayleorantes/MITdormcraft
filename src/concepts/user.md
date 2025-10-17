@@ -6,10 +6,16 @@
 
 **state**:
 - a set of Users with
+<br>
+<br>
     userID       String   // Unique identifier (MongoDB ObjectId)
+    <br>
     username     String   // Public display name
+    <br>
     mitKerberos  String   // MIT email/ID for authentication
+    <br>
     bio          String   // A short user-provided description
+    <br>
     createdAt    Date     // Timestamp of account creation
 
 **actions**:

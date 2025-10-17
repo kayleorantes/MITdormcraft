@@ -6,8 +6,12 @@
 
 **state**:
 - a set of RoomTemplates with
+<br>
+<br>
     templateID   String   // Unique identifier (MongoDB ObjectId)
+    <br>
     dormName     String   // e.g., "New Vassar", "Next House"
+    <br>
     roomType     String   // e.g., "Single", "Double", "Quad"
 
 **actions**:

@@ -678,6 +678,11 @@
       "jsr:@std/assert@~0.225.3",
       "npm:mongodb@^6.20.0",
       "npm:mongodb@^6.5.0"
-    ]
+    ],
+    "packageJson": {
+      "dependencies": [
+        "npm:mongodb@^6.20.0"
+      ]
+    }
   }
 }
