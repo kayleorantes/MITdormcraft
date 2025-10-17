@@ -2,11 +2,11 @@
 
 ## Core Design Rationale
 
-This concept is entirely new and serves as the **foundational controlled vocabulary** for the entire "Dormcraft" application.
+This concept is entirely new and serves as the foundational controlled vocabulary for the entire "Dormcraft" application.
 
 ### Design Decisions:
 
-1.  **Templates as Categories (Not Instances):** The core decision was to model **room types** (e.g., Baker Single, New Vassar Double) rather than storing data for every individual room at MIT.
+1.  **Templates as Categories (Not Instances):** The core decision was to model room types (e.g., Baker Single, New Vassar Double) rather than storing data for every individual room at MIT.
     * **Rationale:** This drastically simplifies the data model, reducing the needed data to a small number of templates. It makes key application features, such as filtering `DesignPosts` by room type, straightforward and efficient.
 
 2.  **Minimalist State for Robustness:** The state is intentionally kept minimal, consisting only of essential categorical data (`dormName`, `roomType`).
