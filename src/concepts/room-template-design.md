@@ -1,20 +1,37 @@
-# Design Notes: RoomTemplate Concept Rationale
+# Design Notes: RoomTemplate Concept
 
 ## Core Design Rationale
 
-This concept is entirely new and serves as the foundational controlled vocabulary for the entire "Dormcraft" application.
+This concept is entirely new and serves as the foundational "controlled vocabulary" for the entire MITdormcraft application. Its purpose is to provide a standardized and managed catalog of all possible dorm room types, which other concepts can reference as a "label" or "category."
 
-### Design Decisions:
+---
 
-1.  **Templates as Categories (Not Instances):** The core decision was to model room types (e.g., Baker Single, New Vassar Double) rather than storing data for every individual room at MIT.
-    * **Rationale:** This drastically simplifies the data model, reducing the needed data to a small number of templates. It makes key application features, such as filtering `DesignPosts` by room type, straightforward and efficient.
+## Design Decisions: State
 
-2.  **Minimalist State for Robustness:** The state is intentionally kept minimal, consisting only of essential categorical data (`dormName`, `roomType`).
-    * **Rationale:** By excluding non-essential, complex details like `dimensions` (which could be added later), the concept is more robust, simpler to implement, and unlikely to require refactoring. It strictly adheres to the principle of managing a simple, unchanging vocabulary.
+1.  **Templates as Categories (Not Instances):** The core decision was to model room types (e.g., "Baker Single") rather than individual, physical rooms.
+    * Rationale: This drastically simplifies the data model by reducing it to a small set of templates. It makes key application features, such as filtering `DesignPosts` by room type, straightforward and efficient.
 
-3.  **Flexible Querying:** The `findTemplates` action is designed to be highly flexible, allowing optional filters based on both `dormName` and `roomType`.
-    * **Rationale:** This single action is sufficient to power various frontend UI components, such as a drop-down menu that first filters by dorm and then by room type.
+2.  **Minimalist State for Robustness:** The state is intentionally kept minimal (`dormName`, `roomType`).
+    * Rationale: By excluding complex, non-essential details (like room dimensions), the concept is more robust and simpler to implement. It strictly adheres to its purpose of managing a simple vocabulary.
 
-### Implementation Notes:
+---
 
-* **Final Implementation:** The initial simple design has proven stable and required no complex changes or refactoring during implementation. Its primary function is a read-only lookup service, making it highly modular and independent.
+## Design Decisions: Actions
+
+The concept's actions are split into two distinct categories: general-use "read" actions and privileged "write" actions.
+
+1.  **Read Actions (for all users):**
+    * `findTemplates(dormName?, roomType?)`: This is the primary read action. It is designed to be highly flexible, allowing optional filters.
+    * Rationale: This single action is sufficient to power various frontend UI components, such as a drop-down menu that first filters by dorm and then by room type.
+    * `getTemplate(templateID)`: A standard action to retrieve a single template by its unique ID.
+
+2.  **Write Actions (for administrative use):**
+    * `addTemplate(...)`, `updateTemplate(...)`, `deleteTemplate(...)`: These actions were added to make the catalog manageable.
+    * Rationale: These actions are conceptually "admin-only." We don't want regular users adding, changing, or deleting the official list of MIT room types. This prevents data corruption (e.g., "Bkr Single", "Baker-Single"). The application's (future) API layer will be responsible for locking these actions down to admin accounts.
+
+---
+
+## Implementation Notes
+
+* **`addTemplate` Return Value:** This action was implemented to return only the new `templateID` as a `string`, rather than the entire composite object. This is a cleaner, more modular pattern that adheres to concept design principles.
+* **Removed "Read-Only" Status:** The concept is no longer a simple "read-only" service. It is now a fully manageable, but controlled, collection of data, with a clear separation between its read and write functionalities.

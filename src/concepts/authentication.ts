@@ -1,0 +1,91 @@
+import { Collection, Db, ObjectId } from "mongodb";
+import { User } from "./user.ts";
+import * as bcrypt from "bcryptjs";
+
+// --- Type Definitions ---
+
+export interface Credential {
+  _id: ObjectId;
+  userID: ObjectId; // Foreign key to User
+  mitKerberos: string;
+  credentialHash: string;
+}
+
+export class AuthenticationConcept {
+  private readonly users: Collection<User>;
+  private readonly credentials: Collection<Credential>;
+
+  constructor(db: Db) {
+    this.users = db.collection<User>("users");
+    this.credentials = db.collection<Credential>("credentials");
+    // Create indexes for fast, unique lookups
+    this.users.createIndex({ username: 1 }, { unique: true });
+    this.credentials.createIndex({ mitKerberos: 1 }, { unique: true });
+  }
+
+  /**
+   * Registers a new user, creating both a User and a Credential document.
+   */
+  async registerAndCreateAccount(
+    username: string,
+    mitKerberos: string,
+    bio: string,
+    credential_data: string,
+  ): Promise<string> {
+    // 1. Check for duplicates
+    const existingUser = await this.users.findOne({ username });
+    if (existingUser) {
+      throw new Error(`Username '${username}' already exists.`);
+    }
+    const existingCred = await this.credentials.findOne({ mitKerberos });
+    if (existingCred) {
+      throw new Error(`Kerberos '${mitKerberos}' is already registered.`);
+    }
+
+    // 2. Hash the password
+    const credentialHash = await bcrypt.hash(credential_data, 10);
+
+    // 3. Create the User document
+    const userDoc: Omit<User, "_id"> = {
+      username,
+      mitKerberos,
+      bio,
+      createdAt: new Date(),
+    };
+    const userResult = await this.users.insertOne(userDoc as User);
+    const userID = userResult.insertedId;
+
+    // 4. Create the Credential document
+    const credDoc: Omit<Credential, "_id"> = {
+      userID,
+      mitKerberos,
+      credentialHash,
+    };
+    await this.credentials.insertOne(credDoc as Credential);
+
+    return userID.toHexString();
+  }
+
+  /**
+   * Verifies a user's credentials and returns their userID if valid.
+   */
+  async verifyCredentials(
+    mitKerberos: string,
+    credential_data: string,
+  ): Promise<string | null> {
+    // 1. Find the user by kerberos
+    const cred = await this.credentials.findOne({ mitKerberos });
+    if (!cred) {
+      return null; // No such user
+    }
+
+    // 2. Verify the password hash
+    const isValid = await bcrypt.compare(credential_data, cred.credentialHash);
+    if (!isValid) {
+      return null; // Invalid password
+    }
+
+    // 3. Success
+    return cred.userID.toHexString();
+  }
+}

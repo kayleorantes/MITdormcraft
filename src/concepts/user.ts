@@ -1,6 +1,11 @@
-import { Collection, Db, ObjectId } from "mongodb";
+import { Collection, Db, ObjectId } from "npm:mongodb";
 
 // --- Type Definitions ---
+
+/**
+ * Represents a User document in the database.
+ * This interface matches the 'state' defined in the User concept.
+ */
 export interface User {
   _id: ObjectId;
   username: string;
@@ -9,7 +14,13 @@ export interface User {
   createdAt: Date;
 }
 
-export class UserAccountConcept {
+// --- Concept Implementation ---
+
+/**
+ * Implements the User concept.
+ * Manages user profile data, but NOT authentication.
+ */
+export class UserConcept {
   private readonly users: Collection<User>;
 
   constructor(db: Db) {
@@ -17,35 +28,11 @@ export class UserAccountConcept {
   }
 
   /**
-   * Creates a new user account.
-   */
-  async createUser(
-    username: string,
-    mitKerberos: string,
-    bio: string,
-  ): Promise<User> {
-    const existingUser = await this.users.findOne({
-      $or: [{ username }, { mitKerberos }],
-    });
-    if (existingUser) {
-      throw new Error("Username or Kerberos already exists.");
-    }
-
-    const user: Omit<User, "_id"> = {
-      username,
-      mitKerberos,
-      bio,
-      createdAt: new Date(),
-    };
-
-    const result = await this.users.insertOne(user as User);
-    return { _id: result.insertedId, ...user };
-  }
-
-  /**
-   * Retrieves a user by their ID.
+   * Retrieves a user by their unique ID.
+   * Corresponds to the `getUser` action.
    */
   async getUser(userID: string): Promise<User | null> {
+    // Validate that the userID is a valid MongoDB ObjectId
     if (!ObjectId.isValid(userID)) {
       return null;
     }
@@ -53,16 +40,34 @@ export class UserAccountConcept {
   }
 
   /**
-   * Updates a user's biography.
+   * Retrieves a user by their public, unique username.
+   * Corresponds to the `getUserByUsername` action.
    */
-  async updateBio(userID: string, newBio: string): Promise<boolean> {
+  async getUserByUsername(username: string): Promise<User | null> {
+    // Find user by the 'username' field
+    return await this.users.findOne({ username });
+  }
+
+  /**
+   * Updates a user's profile biography.
+   * Corresponds to the `updateUserProfile` action.
+   */
+  async updateUserProfile(userID: string, bio: string): Promise<boolean> {
     if (!ObjectId.isValid(userID)) {
       return false;
     }
+
+    // Update only the 'bio' field
     const result = await this.users.updateOne(
       { _id: new ObjectId(userID) },
-      { $set: { bio: newBio } },
+      { $set: { bio: bio } },
     );
+
+    // Return true if exactly one document was modified
     return result.modifiedCount === 1;
   }
+
+  // Note: `createUser` is intentionally omitted.
+  // As per the design notes, user creation is handled by the
+  // `AuthenticationConcept` to ensure separation of concerns.
 }

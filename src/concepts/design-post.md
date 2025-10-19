@@ -1,38 +1,42 @@
-# Concept: DesignPost
+**Concept Specification: Design Post**
 
-**purpose**: To store the core user-generated content: the photos and descriptions of a decorated dorm room.
+    concept: DesignPost
 
-**principle**: Each post is authored by one `User` and is categorized under exactly one `RoomTemplate`. The post itself is independent of the social feedback it receives.
+    purpose: To store the core user-generated content: the photos and descriptions of a decorated dorm room.
 
-**state**:
-- a set of Posts with
+    principle: Each post is a self-contained piece of content. It is immutably linked to an `authorID` (who created it) and a `templateID` (what it represents). The post's content (e.g., title) can be modified, but only by its original author
+
+    state:
+        - a set of Posts with
+            postID              String
+            authorID            String
+            templateID          String 
+            title               String 
+            description         String 
+            imageURL            String
+            createdAt           Date 
+
+
+    actions:
+    - createPost(authorID: String, templateID: String, title: String, description: String, imageURL: String): (postID: String)
+        requires: `authorID` and `templateID` must be valid IDs.
+        effects: Creates, stores, and returns the new `postID`.
+
+    - getPost(postID: String): (post: {postID: String, authorID: String, templateID: String, ...} | null)
+        effects: Returns a specific Post, or null if not found.
+
+    - findPostsByTemplate(templateID: String): (posts: List<{...}>)
+        effects: Returns all posts for a specific room template, sorted newest first.
+
+    - findPostsByAuthor(authorID: String): (posts: List<{...}>)
+        effects: Returns all posts from a specific author, sorted newest first.
+
+    - editPost(postID: String, userID: String, title?: String, description?: String, imageURL?: String): (success: boolean)
+        requires: The `userID` must match the `authorID` of the post.
+        effects: Updates the post's editable fields (title, description, image) and returns true on success.
+
+    - deletePost(postID: String, userID: String): (success: boolean)
+        requires: The `userID` must match the `authorID` of the post.
+        effects: Removes a post and returns true on success.
+
 <br>
-<br>
-    postID       String   // Unique identifier (MongoDB ObjectId)
-    <br>
-    authorID     String   // Reference to the User who created it
-    <br>
-    templateID   String   // Reference to the RoomTemplate it represents
-    <br>
-    title        String   // A title for the design, e.g., "Cozy Minimalist Setup"
-    <br>
-    description  String   // Text describing the design
-    <br>
-    imageURL     String   // URL to the hosted image of the dorm room
-    <br>
-    createdAt    Date     // Time of post creation for sorting
-
-**actions**:
-- `createPost(authorID: String, templateID: String, title: String, description: String, imageURL: String): (post: Post)`
-    - **requires**: `authorID` and `templateID` must be valid, existing IDs.
-    - **effects**: Creates, stores, and returns a new `Post` object.
-
-- `getPost(postID: String): (post: Post | null)`
-    - **effects**: Returns a specific `Post`, or `null` if not found.
-
-- `findPosts(templateID: String): (posts: List<Post>)`
-    - **effects**: Returns all posts for a specific room template, sorted newest first.
-
-- `deletePost(postID: String, userID: String): (success: boolean)`
-    - **requires**: The `userID` must match the `authorID` of the post.
-    - **effects**: Removes a post and returns `true` on success.

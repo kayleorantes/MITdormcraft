@@ -1,4 +1,4 @@
-import { Collection, Db, ObjectId } from "mongodb";
+import { Collection, Db, ObjectId } from "npm:mongodb";
 
 // --- Type Definitions ---
 export interface Post {
@@ -18,13 +18,17 @@ export class DesignPostConcept {
     this.posts = db.collection<Post>("posts");
   }
 
+  /**
+   * Creates a new post.
+   * Corresponds to the `createPost` action.
+   */
   async createPost(
     authorID: string,
     templateID: string,
     title: string,
     description: string,
     imageURL: string,
-  ): Promise<Post> {
+  ): Promise<string> {
     if (!ObjectId.isValid(authorID) || !ObjectId.isValid(templateID)) {
       throw new Error("Invalid author or template ID.");
     }
@@ -37,28 +41,99 @@ export class DesignPostConcept {
       createdAt: new Date(),
     };
     const result = await this.posts.insertOne(post as Post);
-    return { _id: result.insertedId, ...post };
+
+    // Return only the string ID, as per the spec
+    return result.insertedId.toHexString();
   }
 
+  /**
+   * Retrieves a single post by its ID.
+   * Corresponds to the `getPost` action.
+   */
   async getPost(postID: string): Promise<Post | null> {
     if (!ObjectId.isValid(postID)) return null;
     return await this.posts.findOne({ _id: new ObjectId(postID) });
   }
 
-  async findPosts(templateID: string): Promise<Post[]> {
+  /**
+   * Finds all posts associated with a specific room template.
+   * Corresponds to the `findPostsByTemplate` action.
+   */
+  async findPostsByTemplate(templateID: string): Promise<Post[]> {
     if (!ObjectId.isValid(templateID)) return [];
     return await this.posts.find({ templateID: new ObjectId(templateID) })
       .sort({ createdAt: -1 }) // Sort newest first
       .toArray();
   }
 
+  /**
+   * Finds all posts created by a specific author.
+   * Corresponds to the `findPostsByAuthor` action.
+   */
+  async findPostsByAuthor(authorID: string): Promise<Post[]> {
+    if (!ObjectId.isValid(authorID)) return [];
+    return await this.posts.find({ authorID: new ObjectId(authorID) })
+      .sort({ createdAt: -1 }) // Sort newest first
+      .toArray();
+  }
+
+  /**
+   * Edits the content of a post, checking for ownership.
+   * Corresponds to the `editPost` action.
+   */
+  async editPost(
+    postID: string,
+    userID: string,
+    title?: string,
+    description?: string,
+    imageURL?: string,
+  ): Promise<boolean> {
+    if (!ObjectId.isValid(postID) || !ObjectId.isValid(userID)) {
+      return false;
+    }
+
+    // Build an update object with only the fields that were provided
+    const updateFields: Partial<
+      Omit<Post, "_id" | "authorID" | "templateID" | "createdAt">
+    > = {};
+    if (title) {
+      updateFields.title = title;
+    }
+    if (description) {
+      updateFields.description = description;
+    }
+    if (imageURL) {
+      updateFields.imageURL = imageURL;
+    }
+
+    // If no fields to update, return true (as no-op is successful)
+    if (Object.keys(updateFields).length === 0) {
+      return true;
+    }
+
+    const result = await this.posts.updateOne(
+      {
+        _id: new ObjectId(postID),
+        authorID: new ObjectId(userID), // Enforces ownership
+      },
+      { $set: updateFields },
+    );
+
+    // modifiedCount will be 1 only if the post was found AND the user was the author
+    return result.modifiedCount === 1;
+  }
+
+  /**
+   * Deletes a post, checking for ownership.
+   * Corresponds to the `deletePost` action.
+   */
   async deletePost(postID: string, userID: string): Promise<boolean> {
     if (!ObjectId.isValid(postID) || !ObjectId.isValid(userID)) {
       return false;
     }
     const result = await this.posts.deleteOne({
       _id: new ObjectId(postID),
-      authorID: new ObjectId(userID), // Ensures only the author can delete
+      authorID: new ObjectId(userID), // Enforces only the author can delete
     });
     return result.deletedCount === 1;
   }

@@ -1,86 +1,124 @@
-import { assert, assertEquals, assertExists } from "std/assert";
-import { UserAccountConcept } from "./user.ts";
-import { MongoClient } from "mongodb";
+import { assert, assertEquals, assertExists } from "jsr:@std/assert";
+import { UserConcept } from "./user.ts";
+import { Collection, Db, MongoClient, ObjectId } from "npm:mongodb";
 
-const CLIENT = new MongoClient(
-  "mongodb+srv://kayleorantes:EXRGj2KgFZP76KFL@dormcraft.ayphfcs.mongodb.net/?retryWrites=true&w=majority&appName=dormcraft",
-);
-const DB = CLIENT.db("dormgram_test");
+// --- Test Setup ---
+const MONGODB_URL = Deno.env.get("MONGODB_URL");
+const DB_NAME = Deno.env.get("DB_NAME") || "dormcraft_test";
 
-Deno.test("UserAccount Concept Tests", async (t) => {
-  const users = new UserAccountConcept(DB);
-  await DB.collection("users").deleteMany({}); // Clean up before tests
+if (!MONGODB_URL) {
+  throw new Error(
+    "MONGODB_URL is not set in your .env file. Please add it.",
+  );
+}
+
+// Create the client, but DO NOT connect yet
+const CLIENT = new MongoClient(MONGODB_URL);
+
+// --- Test Suite ---
+
+Deno.test("User Concept Tests", async (t) => {
+  // --- FIX: Connect INSIDE the test ---
+  await CLIENT.connect();
+  const DB: Db = CLIENT.db(DB_NAME);
+
+  // --- FIX: Define these INSIDE the test ---
+  const users = new UserConcept(DB);
+  const userCollection: Collection = DB.collection("users");
+  await userCollection.deleteMany({}); // Clean up before tests
 
   let testUserID: string;
+  const testUsername = "test_user_1";
+
+  // --- Setup: Manually create a user for testing ---
+  await t.step("Setup: Insert test user directly", async () => {
+    const result = await userCollection.insertOne({
+      username: testUsername,
+      mitKerberos: "test1@mit.edu",
+      bio: "Initial bio.",
+      createdAt: new Date(),
+    });
+
+    testUserID = result.insertedId.toHexString();
+    assertExists(testUserID);
+    console.log(`\n--- SETUP SUCCESS: Created test user ${testUserID} ---`);
+  });
+
+  // --- Test Cases ---
 
   await t.step(
-    "Operational Principle: Create, Get, and Update User",
+    "Operational Principle: Get user by ID and update profile",
     async () => {
-      console.log("\n--- Testing Operational Principle ---");
-      // 1. Create a user
-      const user = await users.createUser(
-        "testuser",
-        "test@mit.edu",
-        "Hello world!",
-      );
-      assertExists(user._id);
-      assertEquals(user.username, "testuser");
-      testUserID = user._id.toHexString();
-      console.log(
-        `CREATE_USER SUCCESS: Created user ${user.username} with ID ${testUserID}`,
-      );
+      console.log("\n--- Testing GetUser and UpdateUserProfile ---");
 
-      // 2. Get the user
+      // 1. Get the user by ID
       const fetchedUser = await users.getUser(testUserID);
       assertExists(fetchedUser);
-      assertEquals(fetchedUser.username, "testuser");
+      assertEquals(fetchedUser.username, testUsername);
       console.log(`GET_USER SUCCESS: Fetched user ${fetchedUser.username}`);
 
-      // 3. Update the user's bio
-      const success = await users.updateBio(testUserID, "A new bio.");
-      assert(success, "Bio update should be successful");
+      // 2. Update the user's profile
+      const success = await users.updateUserProfile(testUserID, "A new bio.");
+      assert(success, "Profile update should be successful");
+
+      // 3. Verify the update
       const updatedUser = await users.getUser(testUserID);
       assertEquals(updatedUser?.bio, "A new bio.");
       console.log(
-        `UPDATE_BIO SUCCESS: User bio updated to "${updatedUser?.bio}"`,
+        `UPDATE_USER_PROFILE SUCCESS: User bio updated to "${updatedUser?.bio}"`,
+      );
+    },
+  );
+
+  await t.step("Variant Test: Get user by Username", async () => {
+    console.log("\n--- Testing GetUserByUsername ---");
+    const fetchedUser = await users.getUserByUsername(testUsername);
+    assertExists(fetchedUser);
+    assertEquals(fetchedUser._id.toHexString(), testUserID);
+    console.log(
+      `GET_USER_BY_USERNAME SUCCESS: Fetched user ${fetchedUser.username}`,
+    );
+  });
+
+  await t.step(
+    "Interesting Scenario: Get a non-existent user by ID",
+    async () => {
+      console.log("\n--- Testing Non-existent User (by ID) ---");
+      const fakeId = new ObjectId().toHexString(); // A valid, but non-existent ID
+      const user = await users.getUser(fakeId);
+      assertEquals(user, null);
+      console.log(
+        `GET_USER SUCCESS (Expected): Correctly returned null for non-existent ID`,
       );
     },
   );
 
   await t.step(
-    "Interesting Scenario: Attempt to create duplicate user",
+    "Interesting Scenario: Get a non-existent user by Username",
     async () => {
-      console.log("\n--- Testing Duplicate User Creation ---");
-      try {
-        await users.createUser("testuser", "another@mit.edu", "...");
-        assert(false, "Should have thrown an error for duplicate username");
-      } catch (e) {
-        // assert(e.message.includes("Username or Kerberos already exists"));
-        // console.log(
-        //   `CREATE_USER FAIL (Expected): Prevented duplicate username`,
-        // );
-        if (e instanceof Error) {
-          assert(e.message.includes("Username or Kerberos already exists"));
-          console.log(
-            `CREATE_USER FAIL (Expected): Prevented duplicate username`,
-          );
-        } else {
-          // Fail the test if what was caught wasn't a real error
-          assert(false, "An unexpected non-Error type was thrown");
-        }
-      }
+      console.log("\n--- Testing Non-existent User (by Username) ---");
+      const fakeUsername = "non_existent_user";
+      const user = await users.getUserByUsername(fakeUsername);
+      assertEquals(user, null);
+      console.log(
+        `GET_USER_BY_USERNAME SUCCESS (Expected): Correctly returned null for non-existent username`,
+      );
     },
   );
 
-  await t.step("Interesting Scenario: Get a non-existent user", async () => {
-    console.log("\n--- Testing Non-existent User ---");
-    const fakeId = "111111111111111111111111";
-    const user = await users.getUser(fakeId);
-    assertEquals(user, null);
-    console.log(
-      `GET_USER SUCCESS: Correctly returned null for non-existent ID`,
-    );
-  });
+  await t.step(
+    "Interesting Scenario: Update a non-existent user",
+    async () => {
+      console.log("\n--- Testing Update on Non-existent User ---");
+      const fakeId = new ObjectId().toHexString();
+      const success = await users.updateUserProfile(fakeId, "This won't work");
+      assertEquals(success, false);
+      console.log(
+        `UPDATE_USER_PROFILE FAIL (Expected): Correctly returned false for non-existent user`,
+      );
+    },
+  );
 
+  // Clean up: Close the client at the end of the test
   await CLIENT.close();
 });

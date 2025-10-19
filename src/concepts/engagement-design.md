@@ -1,24 +1,39 @@
-# Design Notes: EngagementConcept Rationale
+# Design Notes: Engagement Concept
 
 ## Core Design Rationale
 
-This concept is entirely new and was created specifically to isolate all social interaction logic from the core `DesignPost` concept, which is crucial for achieving strict modularity and adhering to the principle of separation of concerns.
+This concept is entirely new and was created specifically to isolate all social interaction logic (like upvotes and comments) from the core content concepts (like `DesignPost`).
 
-### Initial Design Decisions:
+Rationale: This separation of concerns is critical for modularity. The `DesignPost` concept doesn't need to know what a "comment" is, and this `Engagement` concept doesn't need to know what a "post" is. This concept only knows how to associate interactions with an abstract `postID` (a content identifier), making the system easy to maintain and extend.
+
+---
+
+## Design Decisions: State
 
 1.  **Post-Centric Documents:** Each document in the `engagements` collection corresponds to one `postID`.
-    * **Rationale:** This is a highly efficient data modeling pattern. It allows us to retrieve all comments and upvotes for a single post in one database query, which is performant for loading a post's entire social view.
+    * Rationale: This is a highly efficient data modeling pattern. It allows us to retrieve all comments and upvotes for a single post in one database query, which is performant for loading a post's entire social view.
 
-2.  **Unified `toggleUpvote` Action:** The concept uses a single `toggleUpvote` action instead of separate `upvote` and `removeUpvote` actions.
-    * **Rationale:** This simplifies the client-side logic. The frontend only needs to call `toggleUpvote`, and the backend handles the necessary logic (add if not present, remove if present). The return value immediately gives the new state (`upvoted: boolean`) and the current count (`total: number`) to update the UI.
+2.  **`upvotes` as a Set:** The state for upvotes is defined as a Set of `userID`s.
+    * Rationale: This naturally enforces the invariant that a user can only upvote a post once. In the MongoDB implementation, this directly maps to the `$addToSet` and `$pull` operators, which automatically handle duplicate prevention.
 
-3.  **Upvotes as a Set (Uniqueness Invariant):** The state for upvotes is defined as a Set of `userID`s.
-    * **Rationale:** This naturally enforces the invariant that a user can only upvote a post once. In the MongoDB implementation, this directly maps to the `$addToSet` operator, which automatically prevents duplicate entries and simplifies transactional logic.
+3.  **`comments` as a List:** The state for comments is a List of comment objects.
+    * Rationale: This allows for an ordered, chronological feed of comments directly within the engagement document.
 
-### Rationale for State Structure (Refinements):
+4.  **Unique `commentID`s:** Each comment object within the `comments` list is given its own unique `commentID`.
+    * Rationale: This is essential for enabling `editComment` and `deleteComment` actions. Without a unique ID, it would be impossible to reliably target a specific comment for an update or deletion.
 
-1.  **Unique `commentID`s:** I included a unique `commentID` for each comment object within the `comments` list.
-    * **Rationale:** While initially simpler to omit, a unique ID is essential for future application capabilities, such as allowing a user to `deleteComment(postID, commentID, userID)` or `editComment(...)`. Without this ID, targeting a single comment in a long list would be difficult and inefficient.
+---
 
-2.  **`commentCount` Field (Performance Cache):** A dedicated `commentCount` field is maintained in the state.
-    * **Rationale:** Although the count could be derived by counting the array of comments, maintaining a cached count allows the application to quickly return the total comment number without having to fully project and count a potentially long array on every query.
+## Design Decisions: Actions
+
+1.  **`getEngagementForPost(postID)`:** This is the primary read action.
+    * Rationale: It simply retrieves the engagement document. If no document exists (i.e., no one has upvoted or commented yet), the implementation should return an empty, default object so the frontend doesn't have to handle `null` cases.
+
+2.  **`toggleUpvote(postID, userID)`:** A single, unified action for upvoting.
+    * Rationale: This simplifies client-side logic. The frontend doesn't need to track if the user has already upvoted; it just calls `toggleUpvote`. The backend handles the logic (add if not present, remove if present) and returns the new state, which the UI can use to update itself.
+
+3.  **`addComment(postID, authorID, text)`:** The standard creation action for comments.
+    * Rationale: This action appends a new comment object (complete with a new `commentID`, the `authorID`, text, and a `createdAt` timestamp) to the `comments` list.
+
+4.  **`editComment(...)` and `deleteComment(...)`:** These actions manage the comment lifecycle.
+    * Rationale: These actions were included to provide full CRUD functionality. Crucially, both actions require the `userID` of the person *making* the request. The implementation must check that this `userID` matches the `authorID` stored on the comment, enforcing the invariant that only the original author of a comment can modify or delete it.

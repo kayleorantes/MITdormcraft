@@ -1,20 +1,39 @@
 # Design Notes: DesignPost Concept
 
-## Design Rationale and Core Decisions
+## Core Design Rationale
 
-This concept was created new for this assignment to support the "Dormcraft" feed feature, allowing users to share and browse designs. It was not present in the original Assignment 2 design.
+This concept is entirely new and was created to support the "MITdormcraft" feed, acting as the core content entity. Its purpose is to store the user-generated content (images and descriptions) for a specific dorm room design.
 
-* **Concept's Purpose:** To act as the root entity for a user-created room design, defining its core, unchanging state.
-* **State Components:** The required state includes the `authorID` (who owns it), the `templateID` (which room template it uses), and the actual design data (`designJSON`).
-* **Decoupling Social Features (Strict Modularity):** This concept is intentionally designed to be "dumb" about social features. It does not store or manage comments, upvotes, or views. This separation of concerns ensures:
-    * The `DesignPost` concept only manages the integrity of the design data.
-    * Separate concepts (e.g., `CommentConcept`, `UpvoteConcept`) can manage the social interactions, making both systems highly modular.
-* **Design Data Integrity:** The `designJSON` field stores the user's design as a string. This is treated as a primitive value by the concept, ensuring the concept is only responsible for storing it, not validating its contents (which is deferred to the front end).
+---
 
-## Implementation and Refinement Decisions
+## Design Decisions: State
 
-The following elements were refined or added during the implementation process to ensure robustness and a better user experience:
+1.  **Core Content State:** The state was designed to be simple and clear, containing a `title`, `description`, and `imageURL`. This is a pivot from any earlier ideas of storing complex layout data (like JSON) and focuses purely on the "inspiration feed" model.
+2.  **`authorID` and `templateID` References:** The state includes an `authorID` and a `templateID`.
+    * Rationale: These `String` IDs act as foreign keys, linking the post to the `User` who created it and the `RoomTemplate` it represents. This is the core of the application's data model, connecting content to users and categories.
+3.  **`createdAt` Timestamp:** A standard timestamp is included.
+    * Rationale: This is essential for the primary user experience: sorting the feed chronologically.
 
-1.  **Timestamp Addition:** I included a `createdAt` timestamp during implementation. This is crucial for allowing the front end to sort the user feed chronologically, which is a standard user expectation for a feed-based application.
-2.  **Ownership Check in `deletePost`:** The `deletePost` action requires both a `postID` and a `userID`. The implementation ensures that the passed-in `userID` matches the post's **`authorID`** before allowing deletion. This is a critical security and data integrity check enforced at the concept level.
-3.  **ID Typing:** `authorID` and `templateID` are stored as `ObjectId` types in the database, even though they are treated as strings in the concept interface. This allows for powerful database-level operations (like joins using `$lookup`) if needed for more complex queries in the future, without violating the concept's modular, ID-only interface.
+---
+
+## Design Decisions: Actions
+
+1.  **Decoupling Social Features (Modularity):** This concept is intentionally "dumb" about social features.
+    * Rationale: The `DesignPost` concept knows nothing about comments or upvotes. Its job is *only* to manage the post's content. All social features are handled by the separate `Engagement` concept. This is a critical separation of concerns.
+
+2.  **Ownership Invariant (`deletePost` and `editPost`):** Both `deletePost` and `editPost` actions require a `userID` as an argument.
+    * Rationale: The implementation *must* check that this `userID` matches the post's `authorID`. This enforces the critical invariant that only a post's original author can modify or delete it, building security directly into the concept's logic.
+
+3.  **`createPost` Return Value:** This action returns only the new `postID` as a `string`, not the entire post object.
+    * Rationale: This is a clean, modular pattern. The action's effect is the *creation* of a new entity; if the client needs the full object, it can immediately call `getPost(postID)`.
+
+4.  **Query Actions (`findPostsBy...`):** Added two specific query actions: `findPostsByTemplate` and `findPostsByAuthor`.
+    * Rationale: These provide the two most essential data-access patterns for the application:
+        1.  `findPostsByTemplate`: Populates the feed when a user clicks on a room type (e.g., "Show me all Baker Singles").
+        2.  `findPostsByAuthor`: Populates a user's profile page (e.g., "Show me all posts by this user").
+
+---
+
+## Implementation Notes
+
+* **ID Typing:** `authorID` and `templateID` are stored as `ObjectId` types in the database, even though they are treated as strings in the concept's interface. This allows for powerful database-level operations (like joins using `$lookup`) in the future without violating the concept's modular, ID-only interface.

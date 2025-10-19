@@ -1,13 +1,13 @@
 {
+    "nodeModulesDir": "auto",
     "imports": {
-        "@concepts/": "./src/concepts/",
-        "@utils/": "./src/utils/",
-        "mongodb": "npm:mongodb@^6.20.0",
-        "std/assert": "https://deno.land/std@0.204.0/assert/mod.ts",
-        "npm:mongodb": "npm:mongodb@^6.5.0",
-        "jsr:@std/assert": "jsr:@std/assert@^0.225.3"
+      "@concepts/": "./src/concepts/",
+      "@utils/": "./src/utils/",
+      "mongodb": "npm:mongodb@^6.5.0",
+      "bcryptjs": "npm:bcryptjs",
+      "@std/assert": "jsr:@std/assert@^0.225.3"
     },
     "tasks": {
-        "concepts": "deno run --allow-net --allow-read --allow-sys --allow-env src/concept_server.ts --port 8000 --baseUrl /api"
+      "concepts": "deno run --allow-net --allow-read --allow-sys --allow-env src/concept_server.ts --port 8000 --baseUrl /api"
     }
-}
+  }

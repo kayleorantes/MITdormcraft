@@ -1,6 +1,7 @@
-import { Collection, Db, ObjectId } from "mongodb";
+import { Collection, Db, ObjectId } from "npm:mongodb";
 
 // --- Type Definitions ---
+// Represents the sub-document for a single comment
 export interface Comment {
   commentID: ObjectId;
   authorID: ObjectId;
@@ -8,9 +9,10 @@ export interface Comment {
   createdAt: Date;
 }
 
+// Represents the Engagement document in the database
 export interface Engagement {
   _id: ObjectId; // Corresponds to postID
-  upvotes: ObjectId[];
+  upvotes: ObjectId[]; // Set of userIDs (as ObjectIds)
   comments: Comment[];
 }
 
@@ -21,25 +23,42 @@ export class EngagementConcept {
     this.engagements = db.collection<Engagement>("engagements");
   }
 
-  async getEngagementForPost(postID: string): Promise<Omit<Engagement, "_id">> {
+  /**
+   * Retrieves all engagements for a post.
+   * Corresponds to the `getEngagementForPost` action.
+   */
+  async getEngagementForPost(
+    postID: string,
+  ): Promise<{ upvotes: Set<string>; comments: Comment[] }> {
     if (!ObjectId.isValid(postID)) {
-      return { upvotes: [], comments: [] };
+      return { upvotes: new Set<string>(), comments: [] }; // Return empty
     }
     const engagement = await this.engagements.findOne({
       _id: new ObjectId(postID),
     });
+
     if (!engagement) {
-      return { upvotes: [], comments: [] };
+      return { upvotes: new Set<string>(), comments: [] }; // Return empty
     }
-    return { upvotes: engagement.upvotes, comments: engagement.comments };
+
+    // Convert ObjectId[] to Set<string> for a clean, primitive-based return
+    const upvoteSet = new Set(
+      engagement.upvotes.map((id) => id.toHexString()),
+    );
+
+    return { upvotes: upvoteSet, comments: engagement.comments };
   }
 
+  /**
+   * Toggles a user's upvote on a post.
+   * Corresponds to the `toggleUpvote` action.
+   */
   async toggleUpvote(
     postID: string,
     userID: string,
   ): Promise<{ upvoted: boolean; total: number }> {
     if (!ObjectId.isValid(postID) || !ObjectId.isValid(userID)) {
-      throw new Error("Invalid ID provided.");
+      throw new Error("Invalid postID or userID provided.");
     }
     const postOID = new ObjectId(postID);
     const userOID = new ObjectId(userID);
@@ -52,39 +71,112 @@ export class EngagementConcept {
     if (isCurrentlyUpvoted) {
       update = { $pull: { upvotes: userOID } }; // Remove
     } else {
-      update = { $addToSet: { upvotes: userOID } }; // Add
+      update = { $addToSet: { upvotes: userOID } }; // Add (won't add duplicates)
     }
 
     const result = await this.engagements.findOneAndUpdate(
       { _id: postOID },
       update,
-      { upsert: true, returnDocument: "after" }, // Create doc if not exist
+      { upsert: true, returnDocument: "after" }, // Create doc if not exist, return new doc
     );
 
     const newTotal = result?.upvotes?.length ?? (isCurrentlyUpvoted ? 0 : 1);
     return { upvoted: !isCurrentlyUpvoted, total: newTotal };
   }
 
+  /**
+   * Adds a comment to a post.
+   * Corresponds to the `addComment` action.
+   */
   async addComment(
     postID: string,
-    userID: string,
+    authorID: string, // Renamed from userID to match spec
     text: string,
   ): Promise<Comment> {
-    if (!ObjectId.isValid(postID) || !ObjectId.isValid(userID)) {
-      throw new Error("Invalid ID provided.");
+    if (!ObjectId.isValid(postID) || !ObjectId.isValid(authorID)) {
+      throw new Error("Invalid postID or authorID provided.");
     }
     const newComment: Comment = {
       commentID: new ObjectId(),
-      authorID: new ObjectId(userID),
+      authorID: new ObjectId(authorID),
       text,
       createdAt: new Date(),
     };
 
+    // Atomically push the new comment
     await this.engagements.updateOne(
       { _id: new ObjectId(postID) },
-      { $push: { comments: { $each: [newComment], $sort: { createdAt: 1 } } } }, // Add and keep sorted
-      { upsert: true },
+      { $push: { comments: newComment } },
+      { upsert: true }, // Create engagement doc if it doesn't exist
     );
     return newComment;
+  }
+
+  /**
+   * Deletes a comment from a post, checking for ownership.
+   * Corresponds to the `deleteComment` action.
+   */
+  async deleteComment(
+    postID: string,
+    commentID: string,
+    userID: string,
+  ): Promise<boolean> {
+    if (
+      !ObjectId.isValid(postID) ||
+      !ObjectId.isValid(commentID) ||
+      !ObjectId.isValid(userID)
+    ) {
+      return false;
+    }
+
+    const result = await this.engagements.updateOne(
+      { _id: new ObjectId(postID) },
+      {
+        $pull: {
+          comments: {
+            commentID: new ObjectId(commentID),
+            authorID: new ObjectId(userID), // Enforces ownership
+          },
+        },
+      },
+    );
+
+    // modifiedCount will be 1 only if a comment was found AND removed
+    return result.modifiedCount === 1;
+  }
+
+  /**
+   * Edits a comment on a post, checking for ownership.
+   * Corresponds to the `editComment` action.
+   */
+  async editComment(
+    postID: string,
+    commentID: string,
+    userID: string,
+    newText: string,
+  ): Promise<boolean> {
+    if (
+      !ObjectId.isValid(postID) ||
+      !ObjectId.isValid(commentID) ||
+      !ObjectId.isValid(userID)
+    ) {
+      return false;
+    }
+
+    const result = await this.engagements.updateOne(
+      {
+        _id: new ObjectId(postID),
+        // Find the specific comment authored by the user
+        "comments.commentID": new ObjectId(commentID),
+        "comments.authorID": new ObjectId(userID),
+      },
+      {
+        // Use the $ positional operator to update the text of the matched comment
+        $set: { "comments.$.text": newText },
+      },
+    );
+
+    // modifiedCount will be 1 only if the comment was found AND updated
+    return result.modifiedCount === 1;
   }
 }

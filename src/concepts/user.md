@@ -1,31 +1,28 @@
-# Concept: UserAccount
+**Concept Specification: User Account**
 
-**purpose**: To manage user identity and profile information. This concept is the foundation for authorship and social interaction.
+    concept: UserAccount
 
-**principle**: Each user has a unique, persistent identity. All content creation (posts, comments, upvotes) is tied back to a user account.
+    purpose: To manage user identity and profile information
 
-**state**:
-- a set of Users with
+    principle: Each user has a unique, persistent identity. All content creation (posts, comments, upvotes) is tied back to a user account
+
+    state:
+        - a set of Users with
+            userID              String 
+            username            String 
+            mitKerberos         String
+            bio                 String 
+            createdAt           Date
+        
+    actions:
+    - getUser(userID: String): (user: {userID: String, username: String, bio: String, createdAt: Date} | null)
+        effects: Returns the public-facing user object, or null if not found.
+
+    - getUserByUsername(username: String): (user: {userID: String, username: String, bio: String, createdAt: Date} | null)
+        effects: Returns the public-facing user object, or null if not found.
+
+    - updateUserProfile(userID: String, bio: String): (success: boolean)
+        requires: `userID` must correspond to an existing user.
+        effects: Updates the `bio` field for the specified user and returns true on success.
+
 <br>
-<br>
-    userID       String   // Unique identifier (MongoDB ObjectId)
-    <br>
-    username     String   // Public display name
-    <br>
-    mitKerberos  String   // MIT email/ID for authentication
-    <br>
-    bio          String   // A short user-provided description
-    <br>
-    createdAt    Date     // Timestamp of account creation
-
-**actions**:
-- `createUser(username: String, mitKerberos: String, bio: String): (user: User)`
-    - **requires**: `username` and `mitKerberos` must not already exist in the database.
-    - **effects**: Creates, stores, and returns a new `User` object.
-
-- `getUser(userID: String): (user: User | null)`
-    - **effects**: Returns the `User` object for a given `userID`, or `null` if not found.
-
-- `updateBio(userID: String, newBio: String): (success: boolean)`
-    - **requires**: `userID` must correspond to an existing user.
-    - **effects**: Updates the `bio` field for the specified user and returns `true` on success.
