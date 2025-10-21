@@ -42,9 +42,9 @@ export class RoomTemplateConcept {
    * CorDresponds to the `findTemplates` action.
    */
   async findTemplates(
-    dormName?: string,
-    roomType?: string,
+    params: { dormName?: string; roomType?: string },
   ): Promise<RoomTemplate[]> {
+    const { dormName, roomType } = params; // Get values from the object
     const filter: Partial<RoomTemplate> = {};
     if (dormName) {
       filter.dormName = dormName;
