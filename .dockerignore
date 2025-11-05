@@ -1,0 +1,20 @@
+# Ignore local development files
+.env
+.DS_Store
+**/.DS_Store
+.git
+.gitignore
+
+# Ignore context and documentation
+context/
+design/
+media/
+*.md
+!README.md
+
+# Ignore Obsidian files
+.obsidian/
+
+# Ignore node_modules (Deno doesn't need them in the image)
+node_modules/
+

@@ -1,5 +1,6 @@
 import { Hono } from "jsr:@hono/hono";
 import { cors } from "jsr:@hono/hono/cors";
+import { serveStatic } from "jsr:@hono/hono/deno";
 import { Collection, Db } from "npm:mongodb";
 import { freshID } from "@utils/database.ts";
 import { ID } from "@utils/types.ts";
@@ -200,6 +201,17 @@ export function startRequestingServer(
   );
 
   /**
+   * STATIC FILE SERVING
+   * 
+   * Serve frontend static files from the public directory.
+   * This allows the same server to host both the API and the frontend.
+   */
+  console.log("\nServing static files from ./public");
+  
+  // Serve static files (CSS, JS, images, etc.)
+  app.use("/*", serveStatic({ root: "./public" }));
+
+  /**
    * PASSTHROUGH ROUTES
    *
    * These routes register against every concept action and query.
@@ -296,6 +308,14 @@ export function startRequestingServer(
       }
     }
   });
+
+  /**
+   * FALLBACK ROUTE FOR SPA
+   * 
+   * Serve index.html for any GET request that doesn't match an API route.
+   * This enables client-side routing for single-page applications.
+   */
+  app.get("*", serveStatic({ path: "./public/index.html" }));
 
   console.log(
     `\n🚀 Requesting server listening for POST requests at base path of ${routePath}`,

@@ -1,50 +1,25 @@
 {
-    "nodeModulesDir": "auto",
-    "imports": {
-<<<<<<< HEAD
-<<<<<<< HEAD
-      "@concepts/": "./src/concepts/",
-      "@utils/": "./src/utils/",
-      "mongodb": "npm:mongodb@^6.5.0",
-      "bcryptjs": "npm:bcryptjs",
-      "@std/assert": "jsr:@std/assert@^0.225.3"
-    },
-    "tasks": {
-      "concepts": "deno run --allow-net --allow-read --allow-sys --allow-env src/concept_server.ts --port 8000 --baseUrl /api"
-=======
-        "@concepts/": "./src/concepts/",
-        "@concepts": "./src/concepts/concepts.ts",
-        "@test-concepts": "./src/concepts/test_concepts.ts",
-        "@utils/": "./src/utils/",
-        "@engine": "./src/engine/mod.ts",
-        "@syncs": "./src/syncs/syncs.ts"
-    },
-    "tasks": {
-=======
-        "@concepts/": "./src/concepts/",
-        "@concepts": "./src/concepts/concepts.ts",
-        "@test-concepts": "./src/concepts/test_concepts.ts",
-        "@utils/": "./src/utils/",
-        "@engine": "./src/engine/mod.ts",
-        "@syncs": "./src/syncs/syncs.ts"
-    },
-    "tasks": {
->>>>>>> 266ab57ce02349453ae806eebac5f654bd56a4d7
-        "start": "deno run --allow-net --allow-write --allow-read --allow-sys --allow-env src/main.ts",
-        "concepts": "deno run --allow-net --allow-read --allow-sys --allow-env src/concept_server.ts --port 8000 --baseUrl /api",
-        "import": "deno run --allow-read --allow-write --allow-env src/utils/generate_imports.ts",
-        "build": "deno run import"
-    },
-    "lint": {
-        "rules": {
-            "exclude": [
-                "no-import-prefix",
-                "no-unversioned-import"
-            ]
-        }
-<<<<<<< HEAD
->>>>>>> 9cff8c9 (Added sync engine)
-=======
->>>>>>> 266ab57ce02349453ae806eebac5f654bd56a4d7
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@concepts/": "./src/concepts/",
+    "@concepts": "./src/concepts/concepts.ts",
+    "@test-concepts": "./src/concepts/test_concepts.ts",
+    "@utils/": "./src/utils/",
+    "@engine": "./src/engine/mod.ts",
+    "@syncs": "./src/syncs/syncs.ts"
+  },
+  "tasks": {
+    "start": "deno run --allow-net --allow-write --allow-read --allow-sys --allow-env src/main.ts",
+    "concepts": "deno run --allow-net --allow-read --allow-sys --allow-env src/concept_server.ts --port 8000 --baseUrl /api",
+    "import": "deno run --allow-read --allow-write --allow-env src/utils/generate_imports.ts",
+    "build": "deno run import"
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "no-import-prefix",
+        "no-unversioned-import"
+      ]
     }
   }
+}
