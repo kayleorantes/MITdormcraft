@@ -16,6 +16,7 @@ const INCLUDED_ACTIONS: Set<string> = new Set([
   "RoomTemplate/getTemplate",
   "RoomTemplate/findTemplates",
   "DesignPost/getPost",
+  "DesignPost/findPosts",
   "DesignPost/findPostsByTemplate",
   "DesignPost/findPostsByAuthor",
   "Engagement/getEngagementForPost",
@@ -61,6 +62,16 @@ export class RequestingConcept {
    */
   setConcepts(concepts: any) {
     this.concepts = concepts;
+  }
+
+  /**
+   * The respond action - sends a response back to the requester.
+   * This is called by syncs after processing a request.
+   */
+  async respond(args: { request: string; [key: string]: any }): Promise<void> {
+    // In a real implementation, this would send the response back to the client
+    // For now, we just log it
+    console.log("Response for request:", args.request, "=>", args);
   }
 
   /**

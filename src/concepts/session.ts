@@ -72,6 +72,17 @@ export class SessionConcept {
   }
 
   /**
+   * Gets the user ID for a session token (alias for validateSession).
+   * Used by syncs to extract userID from session.
+   * Returns null if the session is invalid or expired.
+   */
+  async getSessionUser(params: { session: string }): Promise<{ userID: string | null }> {
+    const { session } = params;
+    const userID = await this.validateSession({ token: session });
+    return { userID };
+  }
+
+  /**
    * Ends a session by deleting it.
    */
   async endSession(args: { token: string }): Promise<boolean> {

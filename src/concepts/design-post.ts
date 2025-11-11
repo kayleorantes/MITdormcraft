@@ -16,6 +16,12 @@ export class DesignPostConcept {
 
   constructor(db: Db) {
     this.posts = db.collection<Post>("posts");
+    // Create index on createdAt for efficient sorting
+    this.posts.createIndex({ createdAt: -1 });
+    // Create index on templateID for efficient filtering
+    this.posts.createIndex({ templateID: 1 });
+    // Create index on authorID for efficient filtering
+    this.posts.createIndex({ authorID: 1 });
   }
 
   /**
@@ -54,6 +60,7 @@ export class DesignPostConcept {
    */
   async getPost(args: { postID: string }): Promise<{
     _id: string;
+    postID: string;
     authorID: string;
     templateID: string;
     title: string;
@@ -70,6 +77,7 @@ export class DesignPostConcept {
     // Serialize ObjectIds to strings for JSON response
     return {
       _id: post._id.toHexString(),
+      postID: post._id.toHexString(), // Add postID for frontend compatibility
       authorID: post.authorID.toHexString(),
       templateID: post.templateID.toHexString(),
       title: post.title,
@@ -80,11 +88,54 @@ export class DesignPostConcept {
   }
 
   /**
+   * Finds all posts (no filtering).
+   * Corresponds to the `findPosts` action.
+   * Returns up to 1000 most recent posts to avoid memory issues.
+   */
+  async findPosts(args?: { limit?: number; offset?: number; includeImages?: boolean }): Promise<Array<{
+    _id: string;
+    postID: string;
+    authorID: string;
+    templateID: string;
+    title: string;
+    description: string;
+    imageURL: string;
+    createdAt: string;
+  }>> {
+    const rawLimit = args?.limit ?? 50;
+    const limit = Math.max(1, Math.min(rawLimit, 200));
+    const offset = Math.max(0, args?.offset ?? 0);
+    const includeImages = args?.includeImages ?? false;
+    
+    // Use projection to exclude imageURL if not needed (improves performance)
+    const projection = includeImages ? {} : { imageURL: 0 };
+    
+    const posts = await this.posts.find({}, { projection })
+      .sort({ createdAt: -1 }) // Sort newest first
+      .skip(offset)
+      .limit(limit)
+      .toArray();
+    
+    // Serialize ObjectIds to strings for JSON response
+    return posts.map(post => ({
+      _id: post._id.toHexString(),
+      postID: post._id.toHexString(), // Add postID for frontend compatibility
+      authorID: post.authorID.toHexString(),
+      templateID: post.templateID.toHexString(),
+      title: post.title,
+      description: post.description,
+      imageURL: includeImages ? post.imageURL : '', // Empty string if not included
+      createdAt: post.createdAt.toISOString(),
+    }));
+  }
+
+  /**
    * Finds all posts associated with a specific room template.
    * Corresponds to the `findPostsByTemplate` action.
    */
-  async findPostsByTemplate(args: { templateID: string }): Promise<Array<{
+  async findPostsByTemplate(args: { templateID: string; limit?: number; offset?: number }): Promise<Array<{
     _id: string;
+    postID: string;
     authorID: string;
     templateID: string;
     title: string;
@@ -93,14 +144,20 @@ export class DesignPostConcept {
     createdAt: string;
   }>> {
     const { templateID } = args;
+    const rawLimit = args?.limit ?? 50;
+    const limit = Math.max(1, Math.min(rawLimit, 200));
+    const offset = Math.max(0, args?.offset ?? 0);
     if (!ObjectId.isValid(templateID)) return [];
     const posts = await this.posts.find({ templateID: new ObjectId(templateID) })
       .sort({ createdAt: -1 }) // Sort newest first
+      .skip(offset)
+      .limit(limit)
       .toArray();
     
     // Serialize ObjectIds to strings for JSON response
     return posts.map(post => ({
       _id: post._id.toHexString(),
+      postID: post._id.toHexString(), // Add postID for frontend compatibility
       authorID: post.authorID.toHexString(),
       templateID: post.templateID.toHexString(),
       title: post.title,
@@ -114,8 +171,9 @@ export class DesignPostConcept {
    * Finds all posts created by a specific author.
    * Corresponds to the `findPostsByAuthor` action.
    */
-  async findPostsByAuthor(args: { authorID: string }): Promise<Array<{
+  async findPostsByAuthor(args: { authorID: string; limit?: number; offset?: number }): Promise<Array<{
     _id: string;
+    postID: string;
     authorID: string;
     templateID: string;
     title: string;
@@ -124,14 +182,20 @@ export class DesignPostConcept {
     createdAt: string;
   }>> {
     const { authorID } = args;
+    const rawLimit = args?.limit ?? 50;
+    const limit = Math.max(1, Math.min(rawLimit, 200));
+    const offset = Math.max(0, args?.offset ?? 0);
     if (!ObjectId.isValid(authorID)) return [];
     const posts = await this.posts.find({ authorID: new ObjectId(authorID) })
       .sort({ createdAt: -1 }) // Sort newest first
+      .skip(offset)
+      .limit(limit)
       .toArray();
     
     // Serialize ObjectIds to strings for JSON response
     return posts.map(post => ({
       _id: post._id.toHexString(),
+      postID: post._id.toHexString(), // Add postID for frontend compatibility
       authorID: post.authorID.toHexString(),
       templateID: post.templateID.toHexString(),
       title: post.title,
