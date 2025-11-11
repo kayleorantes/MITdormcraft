@@ -8,7 +8,7 @@ import * as concepts from "@concepts";
 // Use the following line instead to run against the test database, which resets each time.
 // import * as concepts from "@test-concepts";
 
-const { Engine } = concepts;
+const { Engine, Requesting } = concepts;
 import { Logging } from "@engine";
 import { startRequestingServer } from "@concepts/Requesting/RequestingConcept.ts";
 import syncs from "@syncs";
@@ -20,6 +20,17 @@ import syncs from "@syncs";
  *   Logging.VERBOSE - display full record of synchronization.
  */
 Engine.logging = Logging.TRACE;
+
+// Give Requesting concept access to all concepts for routing authenticated requests
+if (Requesting && typeof Requesting === "object" && "setConcepts" in Requesting) {
+  (Requesting as any).setConcepts(concepts);
+}
+
+// Give AuthHelper concept access to all concepts
+const { AuthHelper } = concepts;
+if (AuthHelper && typeof AuthHelper === "object" && "setConcepts" in AuthHelper) {
+  (AuthHelper as any).setConcepts(concepts);
+}
 
 // Register synchronizations
 Engine.register(syncs);

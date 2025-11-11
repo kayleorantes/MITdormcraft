@@ -72,10 +72,13 @@ async function main() {
       }
 
       const instance = new ConceptClass(db);
-      // FIX: The API name should match the filename (e.g., "room-template")
-      const conceptApiName = conceptFileName; // FIX: Keep the dash
+      // Convert filename to PascalCase for API routes (e.g., "room-template" -> "RoomTemplate")
+      const conceptApiName = conceptFileName
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('');
       console.log(
-        `- Registering concept: ${conceptFileName} at ${BASE_URL}/${conceptApiName}`,
+        `- Registering concept: ${conceptFileName} as ${conceptApiName} at ${BASE_URL}/${conceptApiName}`,
       );
 
       const methodNames = Object.getOwnPropertyNames(
@@ -89,36 +92,22 @@ async function main() {
         const actionName = methodName;
         const route = `${BASE_URL}/${conceptApiName}/${actionName}`;
 
-        // FIX: Add logic to create GET routes for read methods.
-        if (actionName.startsWith("get") || actionName.startsWith("find")) {
-          app.get(route, async (c) => {
-            try {
-              const params = c.req.query();
-              const result = await instance[methodName](params);
-              return c.json(result);
-            } catch (e) {
-              console.error(`Error in ${conceptFileName}.${methodName}:`, e);
-              return c.json({ error: e.message }, 500);
-            }
-          });
-          console.log(`  - Endpoint: GET ${route}`);
-        } else {
-          // Keep original POST logic for all other methods.
-          app.post(route, async (c) => {
-            try {
-              const body = await c.req.json().catch(() => ({}));
-              // FIX: Spread the values from the body as arguments.
-              const result = await instance[methodName](
-                ...Object.values(body),
-              );
-              return c.json(result);
-            } catch (e) {
-              console.error(`Error in ${conceptFileName}.${methodName}:`, e);
-              return c.json({ error: e.message }, 500);
-            }
-          });
-          console.log(`  - Endpoint: POST ${route}`);
-        }
+        // Use POST for all methods to match frontend expectations
+        app.post(route, async (c) => {
+          try {
+            const body = await c.req.json().catch(() => ({}));
+            // Check if body has values - if so, spread them; otherwise pass empty object
+            const bodyValues = Object.values(body);
+            const result = bodyValues.length > 0
+              ? await instance[methodName](...bodyValues)
+              : await instance[methodName]({});
+            return c.json(result);
+          } catch (e) {
+            console.error(`Error in ${conceptFileName}.${methodName}:`, e);
+            return c.json({ error: e.message }, 500);
+          }
+        });
+        console.log(`  - Endpoint: POST ${route}`);
       }
     } catch (e) {
       console.error(

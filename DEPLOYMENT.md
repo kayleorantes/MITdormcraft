@@ -1,129 +1,233 @@
 # Deployment Guide for MITdormcraft
 
-This guide explains how to deploy your frontend and backend together on Render.
+## Current Deployment Status
 
-## Backend Changes (Already Completed ✅)
+### Production URL
+- **Deployed App**: https://mit-dormcraft.onrender.com (verify this URL is correct)
+- **Platform**: Render
+- **Database**: MongoDB Atlas
 
-The backend has been configured to serve frontend static files from the `./public` directory:
+## Deployment Configuration
 
-- **API routes** are available at `/api/*`
-- **Static files** are served from `/public`
-- **SPA fallback** serves `index.html` for client-side routing
+### Render Setup
 
-## Frontend Deployment Instructions
+1. **Service Type**: Web Service
+2. **Runtime**: Docker
+3. **Build Command**: Automatically handled by Dockerfile
+4. **Start Command**: `deno task start` (defined in Dockerfile CMD)
 
-### Step 1: Build Your Frontend
+### Required Environment Variables
 
-In your frontend repository, run:
+Set these in Render Dashboard → Environment:
+
+```
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/mitdormcraft?retryWrites=true&w=majority
+PORT=8000
+```
+
+**Note**: Render may override PORT automatically. The app uses `Deno.args` to accept port via `--port` flag.
+
+### Dockerfile Configuration
+
+The included `Dockerfile`:
+- Uses Deno 2.5.5 official image
+- Runs as non-root `deno` user
+- Exposes port 10000 (can be overridden)
+- Runs build step to generate concepts.ts
+- Caches dependencies for faster startup
+- Uses `deno task start` command
+
+## Deployment Steps
+
+### First-Time Deployment
+
+1. **Create Render Account**: https://render.com
+2. **Connect GitHub**: Link your repository
+3. **Create Web Service**:
+   - Select your repository
+   - Name: `mitdormcraft-backend`
+   - Environment: Docker
+   - Instance Type: Free (or paid for better performance)
+4. **Set Environment Variables**:
+   - Add `MONGODB_URI` with your MongoDB Atlas connection string
+5. **Deploy**: Render will automatically build and deploy
+
+### Updating Deployment
+
+Render auto-deploys on every push to main branch:
+
+```bash
+# Make changes
+git add .
+git commit -m "Update backend"
+git push origin main
+
+# Render automatically rebuilds and deploys
+```
+
+### Manual Deployment
+
+In Render Dashboard:
+1. Go to your service
+2. Click "Manual Deploy"
+3. Select branch (usually `main`)
+4. Click "Deploy"
+
+## Verifying Deployment
+
+### Check Server Status
+
+```bash
+# Test if server is responding
+curl https://mit-dormcraft.onrender.com/
+
+# Expected output: "Concept Server with Syncs is running."
+```
+
+### Check Routes
+
+```bash
+# Test public route (no auth required)
+curl -X POST https://mit-dormcraft.onrender.com/api/RoomTemplate/findTemplates \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Should return array of room templates
+```
+
+### Check Logs
+
+In Render Dashboard:
+1. Select your service
+2. Click "Logs" tab
+3. Look for:
+   - `✅ INCLUDED ROUTES (passed through directly):`
+   - `🔒 EXCLUDED ROUTES (require syncs):`
+   - `🚀 Server listening on http://localhost:8000`
+
+## Common Issues
+
+### Issue: Server crashes with "Connection failed"
+**Cause**: `MONGODB_URI` not set or invalid
+**Solution**: Check environment variable in Render dashboard
+
+### Issue: Routes return 404
+**Cause**: Build step didn't generate concepts.ts correctly
+**Solution**: Check build logs; ensure all concept files are present
+
+### Issue: CORS errors from frontend
+**Cause**: Frontend URL not whitelisted
+**Solution**: Check CORS settings in `RequestingConcept.ts` (currently allows all origins for development)
+
+### Issue: "Module not found" errors
+**Cause**: Import paths incorrect or dependencies not cached
+**Solution**: Run `deno cache src/main.ts` in build step
+
+## Frontend Integration
+
+### Update Frontend Environment Variables
+
+In your frontend repository, set:
+
+```bash
+# .env.production
+VITE_API_BASE_URL=https://mit-dormcraft.onrender.com
+```
+
+Then rebuild and redeploy frontend:
 
 ```bash
 npm run build
-# or
-yarn build
-# or
-pnpm build
+# Deploy to your frontend hosting (Vercel, Netlify, etc.)
 ```
 
-This will create a `dist` folder (for Vite) or `build` folder (for Create React App) with your production-ready files.
+## Monitoring
 
-### Step 2: Copy Frontend Build to Backend
+### Health Check Endpoint
 
-Copy all files from your frontend build directory to the `public` directory in this repository:
+The root endpoint `/` serves as a health check:
 
 ```bash
-# If using Vite (default output: dist/)
-cp -r /path/to/your/frontend/dist/* ./public/
-
-# If using Create React App (default output: build/)
-cp -r /path/to/your/frontend/build/* ./public/
+curl https://mit-dormcraft.onrender.com/
 ```
 
-**Important:** Make sure to copy the contents of the build folder, not the folder itself. Your `public` directory should contain:
-- `index.html`
-- `assets/` folder with JS and CSS files
-- Any other static assets
+Should return: `"Concept Server with Syncs is running."`
 
-### Step 3: Verify Locally (Optional)
+### Render Metrics
 
-Before deploying, you can test locally:
+Available in Render Dashboard:
+- CPU usage
+- Memory usage
+- Response times
+- Error rates
+- Logs
 
-```bash
-deno task start
+## Database Connection
+
+### MongoDB Atlas Setup
+
+1. **Create Cluster**: Free tier available
+2. **Create Database User**:
+   - Username: e.g., `mitdormcraft`
+   - Password: Generate secure password
+3. **Whitelist IP**:
+   - Add `0.0.0.0/0` to allow all IPs (required for Render)
+   - Alternatively, find Render's IP ranges and whitelist those
+4. **Get Connection String**:
+   - Click "Connect" → "Connect your application"
+   - Copy MongoDB URI
+   - Replace `<password>` with your database password
+   - Replace `<dbname>` with `mitdormcraft` or your database name
+
+### Connection String Format
+
+```
+mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority
 ```
 
-Then visit `http://localhost:8000` - you should see your frontend, and API calls to `/api/*` should work.
+## Performance Optimization
 
-### Step 4: Commit and Push
+### For Production
 
-```bash
-git add public/
-git commit -m "Add frontend build files"
-git push
-```
+Consider these upgrades:
+- **Paid Render Instance**: Faster CPU, no sleep on inactivity
+- **MongoDB Atlas M10+**: Better performance than free tier
+- **Redis Caching**: Add Redis for frequently accessed data
+- **CDN**: Use CDN for static assets (if serving any)
 
-### Step 5: Deploy on Render
+### Cold Starts
 
-If Render auto-deploys from your repository, the changes will deploy automatically. Otherwise:
+Free Render instances sleep after inactivity:
+- First request after sleep takes ~30 seconds
+- Solution: Use paid instance ($7/month) or ping endpoint every 10 minutes
 
-1. Go to your Render dashboard
-2. Find your MITdormcraft service
-3. Click "Manual Deploy" → "Deploy latest commit"
+## Rollback
 
-### Step 6: Verify Deployment
+If deployment fails:
 
-Visit `https://mit-dormcraft.onrender.com` - your frontend should now load correctly!
+1. Go to Render Dashboard
+2. Click your service
+3. Go to "Events" tab
+4. Find previous successful deployment
+5. Click "Rollback to this version"
 
-## Important Notes
+## Next Steps
 
-### Frontend Environment Variables
+- [ ] Verify deployed URL is accessible
+- [ ] Test all API endpoints in production
+- [ ] Update frontend to use production backend URL
+- [ ] Test full user journey (registration, login, create post, etc.)
+- [ ] Monitor logs for errors
+- [ ] Set up custom domain (optional)
 
-Make sure your frontend is configured to use the correct API base URL:
+## Support
 
-- **Development:** `http://localhost:8000/api`
-- **Production:** `https://mit-dormcraft.onrender.com/api`
+- **Render Docs**: https://render.com/docs
+- **MongoDB Atlas Docs**: https://docs.atlas.mongodb.com
+- **Deno Deploy**: https://deno.com/deploy (alternative platform)
 
-Example configuration (for Vite):
+---
 
-```typescript
-// config.ts or similar
-const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://mit-dormcraft.onrender.com/api'
-  : 'http://localhost:8000/api';
-
-export { API_BASE_URL };
-```
-
-### Updating Frontend
-
-Whenever you make changes to your frontend:
-
-1. Rebuild: `npm run build`
-2. Copy to public: `cp -r dist/* ./public/`
-3. Commit and push
-4. Render will auto-deploy
-
-### Troubleshooting
-
-**Assets fail to load (404 errors):**
-- Ensure your frontend build is in `./public` (not `./public/dist`)
-- Check that `index.html` is at `./public/index.html`
-
-**API calls fail with CORS errors:**
-- The backend has CORS enabled for all origins (`*`)
-- If you need to restrict this in production, update `REQUESTING_ALLOWED_DOMAIN` in `.env`
-
-**Routes don't work (404 on page refresh):**
-- This should be fixed by the SPA fallback route
-- Ensure your frontend is using client-side routing (e.g., React Router in BrowserRouter mode)
-
-## Render Configuration
-
-Your Render service should be configured as:
-
-- **Environment:** Deno
-- **Build Command:** `deno task build`
-- **Start Command:** `deno task start`
-- **Port:** `8000` (or whatever `PORT` env variable is set to)
-
-No additional static site service is needed - the backend serves everything!
+**Last Updated**: November 2025  
+**Assignment**: 6.1040 Assignment 4c
 

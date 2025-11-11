@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px 0;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.secondary {
+            background: #2196F3;
+        }
+        button.secondary:hover {
+            background: #0b7dda;
+        }
+        .output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .status.error {
+            background: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 MIT DormCraft Backend Tester</h1>
+        <p>Test your backend API directly from this page. Check the console output below each step.</p>
+
+        <!-- Step 1: Login/Register -->
+        <div class="section">
+            <h2>Step 1: Login/Register</h2>
+            <label>MIT Kerberos (Email):</label>
+            <input type="email" id="email" value="testuser@mit.edu" placeholder="your@mit.edu">
+            
+            <label>Username:</label>
+            <input type="text" id="username" value="Test User" placeholder="Your Name">
+            
+            <label>Password:</label>
+            <input type="password" id="password" value="test123" placeholder="password">
+            
+            <button onclick="testLogin()">Login</button>
+            <button onclick="testRegister()" class="secondary">Register</button>
+            
+            <div id="loginOutput" class="output" style="margin-top: 15px;"></div>
+            <div id="loginStatus"></div>
+        </div>
+
+        <!-- Step 2: Create/Get Template -->
+        <div class="section">
+            <h2>Step 2: Create/Get Template</h2>
+            <label>Dorm Name:</label>
+            <select id="dormName">
+                <option>Baker House</option>
+                <option>Burton-Conner</option>
+                <option>East Campus</option>
+                <option>MacGregor</option>
+                <option>Maseeh Hall</option>
+                <option>McCormick</option>
+                <option>New House</option>
+                <option>New Vassar</option>
+                <option>Next House</option>
+                <option>Random Hall</option>
+                <option>Senior House</option>
+                <option>Simmons Hall</option>
+            </select>
+            
+            <label>Room Type:</label>
+            <select id="roomType">
+                <option>Single</option>
+                <option>Double</option>
+                <option>Triple</option>
+                <option>Quad</option>
+            </select>
+            
+            <button onclick="testCreateTemplate()">Create/Get Template</button>
+            <button onclick="testGetAllTemplates()" class="secondary">Get All Templates</button>
+            
+            <div id="templateOutput" class="output" style="margin-top: 15px;"></div>
+            <div id="templateStatus"></div>
+        </div>
+
+        <!-- Step 3: Create Post -->
+        <div class="section">
+            <h2>Step 3: Create Post</h2>
+            <label>Title:</label>
+            <input type="text" id="postTitle" value="My Awesome Room Setup" placeholder="Post Title">
+            
+            <label>Description:</label>
+            <textarea id="postDescription" rows="3" placeholder="Describe your room...">Check out my cozy dorm room! I love the setup and the natural lighting.</textarea>
+            
+            <label>Image URL:</label>
+            <input type="url" id="postImageURL" value="https://example.com/room.jpg" placeholder="https://example.com/image.jpg">
+            
+            <button onclick="testCreatePost()">Create Post</button>
+            
+            <div id="postOutput" class="output" style="margin-top: 15px;"></div>
+            <div id="postStatus"></div>
+        </div>
+
+        <!-- Step 4: View Post -->
+        <div class="section">
+            <h2>Step 4: View Post</h2>
+            <label>Post ID (from step 3):</label>
+            <input type="text" id="postID" placeholder="Paste post ID here">
+            
+            <button onclick="testGetPost()">Get Post</button>
+            
+            <div id="getPostOutput" class="output" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let currentToken = '';
+        let currentTemplateID = '';
+        let currentPostID = '';
+
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = isError ? '❌ ERROR' : '✓';
+            element.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function showStatus(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${isError ? 'error' : 'success'}`;
+            element.textContent = message;
+        }
+
+        async function testLogin() {
+            const output = document.getElementById('loginOutput');
+            output.textContent = '';
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('loginOutput', 'Attempting login...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/AuthHelper/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mitKerberos: email,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data && data.token) {
+                    currentToken = data.token;
+                    log('loginOutput', `Login successful!`);
+                    log('loginOutput', `User ID: ${data.userID}`);
+                    log('loginOutput', `Token: ${currentToken.substring(0, 30)}...`);
+                    showStatus('loginStatus', '✅ Logged in successfully! Token saved.', false);
+                } else {
+                    log('loginOutput', 'Login failed. User might not exist.', true);
+                    showStatus('loginStatus', '❌ Login failed. Try registering first.', true);
+                }
+            } catch (error) {
+                log('loginOutput', `Network error: ${error.message}`, true);
+                showStatus('loginStatus', '❌ Network error. Is the server running?', true);
+            }
+        }
+
+        async function testRegister() {
+            const output = document.getElementById('loginOutput');
+            output.textContent = '';
+            
+            const email = document.getElementById('email').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            log('loginOutput', 'Attempting registration...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/AuthHelper/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mitKerberos: email,
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data && data.token) {
+                    currentToken = data.token;
+                    log('loginOutput', `Registration successful!`);
+                    log('loginOutput', `User ID: ${data.userID}`);
+                    log('loginOutput', `Username: ${data.username}`);
+                    log('loginOutput', `Token: ${currentToken.substring(0, 30)}...`);
+                    showStatus('loginStatus', '✅ Registered and logged in! Token saved.', false);
+                } else if (data && data.error) {
+                    log('loginOutput', `Error: ${data.error}`, true);
+                    showStatus('loginStatus', `❌ ${data.error}`, true);
+                } else {
+                    log('loginOutput', 'Registration failed', true);
+                    showStatus('loginStatus', '❌ Registration failed', true);
+                }
+            } catch (error) {
+                log('loginOutput', `Network error: ${error.message}`, true);
+                showStatus('loginStatus', '❌ Network error. Is the server running?', true);
+            }
+        }
+
+        async function testCreateTemplate() {
+            const output = document.getElementById('templateOutput');
+            output.textContent = '';
+            
+            const dormName = document.getElementById('dormName').value;
+            const roomType = document.getElementById('roomType').value;
+            
+            log('templateOutput', `Creating template: ${dormName} - ${roomType}`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/RoomTemplate/addTemplate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dormName: dormName,
+                        roomType: roomType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data && data.templateID) {
+                    currentTemplateID = data.templateID;
+                    log('templateOutput', `Template created/found!`);
+                    log('templateOutput', `Template ID: ${currentTemplateID}`);
+                    log('templateOutput', `Length: ${currentTemplateID.length} chars (should be 24)`);
+                    showStatus('templateStatus', '✅ Template ID saved. Ready to create post!', false);
+                } else if (data && data.error) {
+                    log('templateOutput', `Error: ${data.error}`, true);
+                    showStatus('templateStatus', `❌ ${data.error}`, true);
+                }
+            } catch (error) {
+                log('templateOutput', `Network error: ${error.message}`, true);
+                showStatus('templateStatus', '❌ Network error', true);
+            }
+        }
+
+        async function testGetAllTemplates() {
+            const output = document.getElementById('templateOutput');
+            output.textContent = '';
+            
+            log('templateOutput', 'Fetching all templates...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/RoomTemplate/findTemplates`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                log('templateOutput', `Found ${data.length} templates:`);
+                data.slice(0, 10).forEach(t => {
+                    log('templateOutput', `  - ${t.dormName} ${t.roomType}: ${t.templateID}`);
+                });
+                if (data.length > 10) {
+                    log('templateOutput', `  ... and ${data.length - 10} more`);
+                }
+            } catch (error) {
+                log('templateOutput', `Error: ${error.message}`, true);
+            }
+        }
+
+        async function testCreatePost() {
+            const output = document.getElementById('postOutput');
+            output.textContent = '';
+            
+            if (!currentToken) {
+                log('postOutput', 'ERROR: No token! Please login first (Step 1)', true);
+                showStatus('postStatus', '❌ Please login first!', true);
+                return;
+            }
+            
+            if (!currentTemplateID) {
+                log('postOutput', 'ERROR: No template ID! Please create/get template first (Step 2)', true);
+                showStatus('postStatus', '❌ Please get a template first!', true);
+                return;
+            }
+            
+            const title = document.getElementById('postTitle').value;
+            const description = document.getElementById('postDescription').value;
+            const imageURL = document.getElementById('postImageURL').value;
+            
+            log('postOutput', 'Creating post...');
+            log('postOutput', `Token: ${currentToken.substring(0, 20)}...`);
+            log('postOutput', `Template ID: ${currentTemplateID}`);
+            log('postOutput', `Title: ${title}`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/DesignPost/createPost`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: currentToken,
+                        templateID: currentTemplateID,
+                        title: title,
+                        description: description,
+                        imageURL: imageURL
+                    })
+                });
+                
+                log('postOutput', `Response status: ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (data && !data.error && typeof data === 'string') {
+                    currentPostID = data;
+                    document.getElementById('postID').value = currentPostID;
+                    log('postOutput', '✨ Post created successfully!');
+                    log('postOutput', `Post ID: ${currentPostID}`);
+                    showStatus('postStatus', '✅ Post created! See Post ID below.', false);
+                } else if (data && data.error) {
+                    log('postOutput', `ERROR: ${data.error}`, true);
+                    showStatus('postStatus', `❌ ${data.error}`, true);
+                } else {
+                    log('postOutput', `Unexpected response: ${JSON.stringify(data)}`, true);
+                    showStatus('postStatus', '❌ Unexpected response', true);
+                }
+            } catch (error) {
+                log('postOutput', `Network error: ${error.message}`, true);
+                showStatus('postStatus', '❌ Network error', true);
+            }
+        }
+
+        async function testGetPost() {
+            const output = document.getElementById('getPostOutput');
+            output.textContent = '';
+            
+            const postID = document.getElementById('postID').value;
+            
+            if (!postID) {
+                log('getPostOutput', 'ERROR: Please enter a post ID', true);
+                return;
+            }
+            
+            log('getPostOutput', `Fetching post ${postID}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/DesignPost/getPost`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ postID: postID })
+                });
+                
+                const data = await response.json();
+                
+                if (data && data.postID) {
+                    log('getPostOutput', '✨ Post found!');
+                    log('getPostOutput', JSON.stringify(data, null, 2));
+                    
+                    // Fetch author name
+                    log('getPostOutput', '\nFetching author info...');
+                    const authorResponse = await fetch(`${API_BASE}/UserAccount/getUser`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userID: data.authorID })
+                    });
+                    const author = await authorResponse.json();
+                    log('getPostOutput', `Author: ${author.username}`);
+                } else {
+                    log('getPostOutput', 'Post not found or error', true);
+                }
+            } catch (error) {
+                log('getPostOutput', `Error: ${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>
+

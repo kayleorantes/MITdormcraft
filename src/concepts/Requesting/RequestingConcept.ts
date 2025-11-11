@@ -1,325 +1,365 @@
 import { Hono } from "jsr:@hono/hono";
 import { cors } from "jsr:@hono/hono/cors";
-import { serveStatic } from "jsr:@hono/hono/deno";
-import { Collection, Db } from "npm:mongodb";
-import { freshID } from "@utils/database.ts";
-import { ID } from "@utils/types.ts";
-import { exclusions, inclusions } from "./passthrough.ts";
-import "jsr:@std/dotenv/load";
+import { parseArgs } from "jsr:@std/cli/parse-args";
 
 /**
- * # Requesting concept configuration
- * The following environment variables are available:
- *
- * - PORT: the port to the server binds, default 10000
- * - REQUESTING_BASE_URL: the base URL prefix for api requests, default "/api"
- * - REQUESTING_TIMEOUT: the timeout for requests, default 10000ms
- * - REQUESTING_SAVE_RESPONSES: whether to persist responses or not, default true
+ * The Requesting concept handles HTTP requests and routes them either:
+ * 1. Directly to concept actions (included actions - default)
+ * 2. As request actions for syncing (excluded actions)
+ * 
+ * This allows for secure authentication and synchronization patterns.
  */
-const PORT = parseInt(Deno.env.get("PORT") ?? "8000", 10);
-const REQUESTING_BASE_URL = Deno.env.get("REQUESTING_BASE_URL") ?? "/api";
-const REQUESTING_TIMEOUT = parseInt(
-  Deno.env.get("REQUESTING_TIMEOUT") ?? "10000",
-  10,
-);
 
-// TODO: make sure you configure this environment variable for proper CORS configuration
-const REQUESTING_ALLOWED_DOMAIN = Deno.env.get("REQUESTING_ALLOWED_DOMAIN") ??
-  "*";
+// Configuration for which actions to include (pass through) or exclude (sync)
+const INCLUDED_ACTIONS: Set<string> = new Set([
+  // Read-only actions that don't need authentication
+  "RoomTemplate/getTemplate",
+  "RoomTemplate/findTemplates",
+  "DesignPost/getPost",
+  "DesignPost/findPostsByTemplate",
+  "DesignPost/findPostsByAuthor",
+  "Engagement/getEngagementForPost",
+  "UserAccount/getUser",
+  "UserAccount/getUserByUsername",
+  
+  // Authentication actions (create/verify sessions)
+  "Authentication/registerAndCreateAccount",
+  "Authentication/verifyCredentials",
+  "Session/createSession",
+  "Session/validateSession",
+  "Session/endSession",
+  
+  // Auth helper endpoints (convenience methods)
+  "AuthHelper/register",
+  "AuthHelper/login",
+  "AuthHelper/logout",
+  
+  // Room template creation (public - anyone can add templates)
+  "RoomTemplate/addTemplate",
+]);
 
-// Choose whether or not to persist responses
-const REQUESTING_SAVE_RESPONSES = Deno.env.get("REQUESTING_SAVE_RESPONSES") ??
-  true;
+const EXCLUDED_ACTIONS: Set<string> = new Set([
+  // Write actions that require authentication
+  "DesignPost/createPost",
+  "DesignPost/editPost",
+  "DesignPost/deletePost",
+  "Engagement/toggleUpvote",
+  "Engagement/addComment",
+  "Engagement/editComment",
+  "Engagement/deleteComment",
+  "UserAccount/updateUserProfile",
+  // "RoomTemplate/addTemplate",  // Moved to INCLUDED - public endpoint
+  "RoomTemplate/updateTemplate",  // Keep these protected (admin only)
+  "RoomTemplate/deleteTemplate",
+]);
 
-const PREFIX = "Requesting" + ".";
+export class RequestingConcept {
+  private concepts: any;
 
-// --- Type Definitions ---
-type Request = ID;
-
-/**
- * a set of Requests with
- *   an input unknown
- *   an optional response unknown
- */
-interface RequestDoc {
-  _id: Request;
-  input: { path: string; [key: string]: unknown };
-  response?: unknown;
-  createdAt: Date;
-}
-
-/**
- * Represents an in-flight request waiting for a response.
- * This state is not persisted and lives only in memory.
- */
-interface PendingRequest {
-  promise: Promise<unknown>;
-  resolve: (value: unknown) => void;
-  reject: (reason?: unknown) => void;
-}
-
-/**
- * The Requesting concept encapsulates an API server, modeling incoming
- * requests and outgoing responses as concept actions.
- */
-export default class RequestingConcept {
-  private readonly requests: Collection<RequestDoc>;
-  private readonly pending: Map<Request, PendingRequest> = new Map();
-  private readonly timeout: number;
-
-  constructor(private readonly db: Db) {
-    this.requests = this.db.collection(PREFIX + "requests");
-    this.timeout = REQUESTING_TIMEOUT;
-    console.log(
-      `\nRequesting concept initialized with a timeout of ${this.timeout}ms.`,
-    );
+  /**
+   * Set the concepts instance so we can route to them
+   */
+  setConcepts(concepts: any) {
+    this.concepts = concepts;
   }
 
   /**
-   * request (path: String, ...): (request: Request)
-   * System action triggered by an external HTTP request.
-   *
-   * **requires** true
-   *
-   * **effects** creates a new Request `r`; sets the input of `r` to be the path and all other input parameters; returns `r` as `request`
+   * The request action - called for excluded actions.
+   * This handles authentication and routing for protected actions.
    */
-  async request(
-    inputs: { path: string; [key: string]: unknown },
-  ): Promise<{ request: Request }> {
-    const requestId = freshID() as Request;
-    const requestDoc: RequestDoc = {
-      _id: requestId,
-      input: inputs,
-      createdAt: new Date(),
-    };
+  async request(args: { path: string; params: Record<string, any> }): Promise<any> {
+    const { path, params } = args;
+    
+    if (!this.concepts) {
+      throw new Error("Concepts not initialized");
+    }
 
-    // Persist the request for logging/auditing purposes.
-    await this.requests.insertOne(requestDoc);
+    let userID: string | null = null;
 
-    // Create an in-memory pending request to manage the async response.
-    let resolve!: (value: unknown) => void;
-    let reject!: (reason?: unknown) => void;
-    const promise = new Promise<unknown>((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
+    // Try to authenticate via token first
+    if (params.token) {
+      userID = await this.concepts.Session.validateSession({ token: params.token });
+      if (!userID) {
+        throw new Error("Unauthorized: Invalid or expired session");
+      }
+    }
+    // If no token but authorID is provided (for backwards compatibility)
+    else if (params.authorID) {
+      userID = params.authorID;
+    }
+    // If no authentication provided at all
+    else {
+      throw new Error("Unauthorized: No authentication provided (token or authorID required)");
+    }
 
-    this.pending.set(requestId, { promise, resolve, reject });
+    // Route to the appropriate action based on path
+    const [conceptName, actionName] = path.split("/");
+    const concept = this.concepts[conceptName];
 
-    return { request: requestId };
+    if (!concept || typeof concept[actionName] !== "function") {
+      throw new Error(`Action ${path} not found`);
+    }
+
+    // Call the action with the authenticated user
+    return await this.routeAction(concept, actionName, userID, params);
   }
 
   /**
-   * respond (request: Request, [key: string]: unknown)
-   *
-   * **requires** a Request with the given `request` id exists and has no response yet
-   *
-   * **effects** sets the response of the given Request to the provided key-value pairs.
+   * Route authenticated requests to the appropriate concept action
    */
-  async respond(
-    { request, ...response }: { request: Request; [key: string]: unknown },
-  ): Promise<{ request: string }> {
-    const pendingRequest = this.pending.get(request);
-    if (pendingRequest) {
-      // Resolve the promise for any waiting `_awaitResponse` call.
-      pendingRequest.resolve(response);
-    }
+  private async routeAction(
+    concept: any,
+    actionName: string,
+    userID: string,
+    params: Record<string, any>
+  ): Promise<any> {
+    // Remove token from params since we've already validated it
+    const { token, ...actionParams } = params;
 
-    // Update the persisted request document with the response.
-    if (REQUESTING_SAVE_RESPONSES) {
-      await this.requests.updateOne({ _id: request }, { $set: { response } });
-    }
+    switch (actionName) {
+      // Design Post actions
+      case "createPost":
+        // createPost({authorID, templateID, title, description, imageURL})
+        return await concept.createPost({
+          authorID: userID,
+          templateID: actionParams.templateID,
+          title: actionParams.title,
+          description: actionParams.description,
+          imageURL: actionParams.imageURL
+        });
 
-    return { request };
+      case "editPost":
+        // editPost({postID, userID, title?, description?, imageURL?})
+        return await concept.editPost({
+          postID: actionParams.postID,
+          userID,
+          title: actionParams.title,
+          description: actionParams.description,
+          imageURL: actionParams.imageURL
+        });
+
+      case "deletePost":
+        // deletePost({postID, userID})
+        return await concept.deletePost({
+          postID: actionParams.postID,
+          userID
+        });
+
+      // Engagement actions
+      case "toggleUpvote":
+        // toggleUpvote({postID, userID})
+        return await concept.toggleUpvote({
+          postID: actionParams.postID,
+          userID
+        });
+
+      case "addComment":
+        // addComment({postID, authorID, text})
+        return await concept.addComment({
+          postID: actionParams.postID,
+          authorID: userID,
+          text: actionParams.text
+        });
+
+      case "editComment":
+        // editComment({postID, commentID, userID, newText})
+        return await concept.editComment({
+          postID: actionParams.postID,
+          commentID: actionParams.commentID,
+          userID,
+          newText: actionParams.newText
+        });
+
+      case "deleteComment":
+        // deleteComment({postID, commentID, userID})
+        return await concept.deleteComment({
+          postID: actionParams.postID,
+          commentID: actionParams.commentID,
+          userID
+        });
+
+      // User Account actions
+      case "updateUserProfile":
+        // updateUserProfile({userID, bio})
+        return await concept.updateUserProfile({
+          userID,
+          bio: actionParams.bio
+        });
+
+      // Room Template actions (admin only - for now just require auth)
+      case "addTemplate":
+        // addTemplate({dormName, roomType})
+        return await concept.addTemplate({
+          dormName: actionParams.dormName,
+          roomType: actionParams.roomType
+        });
+
+      case "updateTemplate":
+        // updateTemplate({templateID, dormName?, roomType?})
+        return await concept.updateTemplate({
+          templateID: actionParams.templateID,
+          dormName: actionParams.dormName,
+          roomType: actionParams.roomType
+        });
+
+      case "deleteTemplate":
+        // deleteTemplate({templateID})
+        return await concept.deleteTemplate({
+          templateID: actionParams.templateID
+        });
+
+      default:
+        throw new Error(`Action ${actionName} not supported`);
+    }
   }
 
   /**
-   * _awaitResponse (request: Request): (response: unknown)
-   *
-   * **effects** returns the response associated with the given request, waiting if necessary up to a configured timeout.
+   * Check if an action is explicitly included
    */
-  async _awaitResponse(
-    { request }: { request: Request },
-  ): Promise<{ response: unknown }[]> {
-    const pendingRequest = this.pending.get(request);
+  static isIncluded(path: string): boolean {
+    return INCLUDED_ACTIONS.has(path);
+  }
 
-    if (!pendingRequest) {
-      // The request might have been processed already or never existed.
-      // We could check the database for a persisted response here if needed.
-      throw new Error(
-        `Request ${request} is not pending or does not exist: it may have timed-out.`,
-      );
-    }
+  /**
+   * Check if an action is explicitly excluded
+   */
+  static isExcluded(path: string): boolean {
+    return EXCLUDED_ACTIONS.has(path);
+  }
 
-    let timeoutId: number;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(
-        () =>
-          reject(
-            new Error(`Request ${request} timed out after ${this.timeout}ms`),
-          ),
-        this.timeout,
-      );
-    });
-
-    try {
-      // Race the actual response promise against the timeout.
-      const response = await Promise.race([
-        pendingRequest.promise,
-        timeoutPromise,
-      ]);
-      return [{ response }];
-    } finally {
-      // Clean up regardless of outcome.
-      clearTimeout(timeoutId!);
-      this.pending.delete(request);
-    }
+  /**
+   * Check if an action is verified (either included or excluded)
+   */
+  static isVerified(path: string): boolean {
+    return INCLUDED_ACTIONS.has(path) || EXCLUDED_ACTIONS.has(path);
   }
 }
 
 /**
- * Starts the Hono web server that listens for incoming requests and pipes them
- * into the Requesting concept instance. Additionally, it allows passthrough
- * requests to concept actions by default. These should be
- * @param concepts The complete instantiated concepts import from "@concepts"
+ * Start the HTTP server that routes requests to concepts
  */
-export function startRequestingServer(
-  // deno-lint-ignore no-explicit-any
-  concepts: Record<string, any>,
-) {
-  // deno-lint-ignore no-unused-vars
-  const { Requesting, client, db, Engine, ...instances } = concepts;
-  if (!(Requesting instanceof RequestingConcept)) {
-    throw new Error("Requesting concept missing or broken.");
-  }
+export async function startRequestingServer(concepts: any) {
+  const flags = parseArgs(Deno.args, {
+    string: ["port", "baseUrl"],
+    default: {
+      port: "8000",
+      baseUrl: "/api",
+    },
+  });
+
+  const PORT = parseInt(flags.port, 10);
+  const BASE_URL = flags.baseUrl;
+
   const app = new Hono();
+
+  // Enable CORS for frontend access
   app.use(
-    "/*",
+    `${BASE_URL}/*`,
     cors({
-      origin: REQUESTING_ALLOWED_DOMAIN,
+      origin: "*", // Allow all origins for development
+      allowMethods: ["GET", "POST", "OPTIONS"],
     }),
   );
 
-  /**
-   * STATIC FILE SERVING
-   * 
-   * Serve frontend static files from the public directory.
-   * This allows the same server to host both the API and the frontend.
-   */
-  console.log("\nServing static files from ./public");
-  
-  // Serve static files (CSS, JS, images, etc.)
-  app.use("/*", serveStatic({ root: "./public" }));
+  app.get("/", (c) => c.text("Concept Server with Syncs is running."));
 
-  /**
-   * PASSTHROUGH ROUTES
-   *
-   * These routes register against every concept action and query.
-   * While convenient, you should confirm that they are either intentional
-   * inclusions and specify a reason, or if they should be excluded and
-   * handled by Requesting instead.
-   */
-
-  console.log("\nRegistering concept passthrough routes.");
-  let unverified = false;
-  for (const [conceptName, concept] of Object.entries(instances)) {
-    const methods = Object.getOwnPropertyNames(
-      Object.getPrototypeOf(concept),
-    )
-      .filter((name) =>
-        name !== "constructor" && typeof concept[name] === "function"
-      );
-    for (const method of methods) {
-      const route = `${REQUESTING_BASE_URL}/${conceptName}/${method}`;
-      if (exclusions.includes(route)) continue;
-      const included = route in inclusions;
-      if (!included) unverified = true;
-      const msg = included
-        ? `  -> ${route}`
-        : `WARNING - UNVERIFIED ROUTE: ${route}`;
-
-      app.post(route, async (c) => {
-        try {
-          const body = await c.req.json().catch(() => ({})); // Handle empty body
-          const result = await concept[method](body);
-          return c.json(result);
-        } catch (e) {
-          console.error(`Error in ${conceptName}.${method}:`, e);
-          return c.json({ error: "An internal server error occurred." }, 500);
-        }
-      });
-      console.log(msg);
-    }
-  }
-  const passthroughFile = "./src/concepts/Requesting/passthrough.ts";
-  if (unverified) {
-    console.log(`FIX: Please verify routes in: ${passthroughFile}`);
-  }
-
-  /**
-   * REQUESTING ROUTES
-   *
-   * Captures all POST routes under the base URL.
-   * The specific action path is extracted from the URL.
-   */
-
-  const routePath = `${REQUESTING_BASE_URL}/*`;
-  app.post(routePath, async (c) => {
-    try {
-      const body = await c.req.json();
-      if (typeof body !== "object" || body === null) {
-        return c.json(
-          { error: "Invalid request body. Must be a JSON object." },
-          400,
-        );
-      }
-
-      // Extract the specific action path from the request URL.
-      // e.g., if base is /api and request is /api/users/create, path is /users/create
-      const actionPath = c.req.path.substring(REQUESTING_BASE_URL.length);
-
-      // Combine the path from the URL with the JSON body to form the action's input.
-      const inputs = {
-        ...body,
-        path: actionPath,
-      };
-
-      console.log(`[Requesting] Received request for path: ${inputs.path}`);
-
-      // 1. Trigger the 'request' action.
-      const { request } = await Requesting.request(inputs);
-
-      // 2. Await the response via the query. This is where the server waits for
-      //    synchronizations to trigger the 'respond' action.
-      const responseArray = await Requesting._awaitResponse({ request });
-
-      // 3. Send the response back to the client.
-      const { response } = responseArray[0];
-      return c.json(response);
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(`[Requesting] Error processing request:`, e.message);
-        if (e.message.includes("timed out")) {
-          return c.json({ error: "Request timed out." }, 504); // Gateway Timeout
-        }
-        return c.json({ error: "An internal server error occurred." }, 500);
-      } else {
-        return c.json({ error: "unknown error occurred." }, 418);
-      }
-    }
-  });
-
-  /**
-   * FALLBACK ROUTE FOR SPA
-   * 
-   * Serve index.html for any GET request that doesn't match an API route.
-   * This enables client-side routing for single-page applications.
-   */
-  app.get("*", serveStatic({ path: "./public/index.html" }));
-
-  console.log(
-    `\n🚀 Requesting server listening for POST requests at base path of ${routePath}`,
+  // Extract all concept names from the imported concepts
+  const conceptNames = Object.keys(concepts).filter(
+    (name) => name !== "Engine" && name !== "db" && name !== "client"
   );
 
+  console.log("\nRegistering routes...");
+  const unverifiedRoutes: string[] = [];
+  const includedRoutes: string[] = [];
+  const excludedRoutes: string[] = [];
+
+  // Register routes for all concept actions
+  for (const conceptName of conceptNames) {
+    const concept = concepts[conceptName];
+    if (!concept || typeof concept !== "object") continue;
+
+    // Get all methods from the concept
+    const methodNames = Object.getOwnPropertyNames(
+      Object.getPrototypeOf(concept)
+    ).filter((name) => name !== "constructor" && typeof concept[name] === "function");
+
+    for (const methodName of methodNames) {
+      const path = `${conceptName}/${methodName}`;
+      const route = `${BASE_URL}/${path}`;
+
+      // Check if this action is verified
+      if (!RequestingConcept.isVerified(path)) {
+        unverifiedRoutes.push(path);
+      } else if (RequestingConcept.isIncluded(path)) {
+        includedRoutes.push(path);
+      } else if (RequestingConcept.isExcluded(path)) {
+        excludedRoutes.push(path);
+      }
+
+      // Register the route
+      app.post(route, async (c) => {
+        try {
+          const body = await c.req.json().catch(() => ({}));
+
+          // If excluded, trigger the request action for syncing
+          if (RequestingConcept.isExcluded(path)) {
+            const requestingConcept = concepts.Requesting;
+            if (!requestingConcept) {
+              return c.json({ error: "Requesting concept not found" }, 500);
+            }
+
+            // Extract authentication from headers or body
+            const tokenFromHeader = c.req.header("Authorization")?.replace("Bearer ", "") || 
+                                   c.req.header("X-Session-Token");
+            const userIDFromHeader = c.req.header("X-User-ID");
+            const tokenFromBody = body.token;
+            const token = tokenFromBody || tokenFromHeader;
+
+            // Build params with authentication
+            let params = { ...body };
+            if (token) {
+              params.token = token;
+            } else if (userIDFromHeader && !params.authorID) {
+              // If no token but userID in header, use it as authorID for authentication
+              params.authorID = userIDFromHeader;
+            }
+
+            // Trigger Requesting.request action (will be handled by syncs)
+            console.log(`[EXCLUDED] ${path} -> Requesting.request`);
+            const result = await requestingConcept.request({ path, params });
+            return c.json(result);
+          }
+
+          // Otherwise, pass through directly to the concept action (included)
+          console.log(`[INCLUDED] ${path} -> ${conceptName}.${methodName}`);
+          // Pass body object directly (or empty object if no body)
+          const result = await concept[methodName](Object.keys(body).length > 0 ? body : {});
+          return c.json(result);
+        } catch (e: any) {
+          console.error(`Error in ${path}:`, e);
+          return c.json({ error: e.message }, 500);
+        }
+      });
+    }
+  }
+
+  // Print route status
+  if (unverifiedRoutes.length > 0) {
+    console.log("\n⚠️  UNVERIFIED ROUTES (not explicitly included or excluded):");
+    unverifiedRoutes.forEach(route => console.log(`  - ${route}`));
+  }
+
+  if (includedRoutes.length > 0) {
+    console.log("\n✅ INCLUDED ROUTES (passed through directly):");
+    includedRoutes.forEach(route => console.log(`  - ${route}`));
+  }
+
+  if (excludedRoutes.length > 0) {
+    console.log("\n🔒 EXCLUDED ROUTES (require syncs):");
+    excludedRoutes.forEach(route => console.log(`  - ${route}`));
+  }
+
+  console.log(`\n🚀 Server listening on http://localhost:${PORT}`);
   Deno.serve({ port: PORT }, app.fetch);
 }
+

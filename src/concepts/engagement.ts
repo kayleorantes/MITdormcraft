@@ -27,36 +27,51 @@ export class EngagementConcept {
    * Retrieves all engagements for a post.
    * Corresponds to the `getEngagementForPost` action.
    */
-  async getEngagementForPost(
-    postID: string,
-  ): Promise<{ upvotes: Set<string>; comments: Comment[] }> {
+  async getEngagementForPost(args: {
+    postID: string;
+  }): Promise<{ upvotes: string[]; comments: Array<{
+    commentID: string;
+    authorID: string;
+    text: string;
+    createdAt: string;
+  }> }> {
+    const { postID } = args;
+    
     if (!ObjectId.isValid(postID)) {
-      return { upvotes: new Set<string>(), comments: [] }; // Return empty
+      return { upvotes: [], comments: [] }; // Return empty arrays
     }
     const engagement = await this.engagements.findOne({
       _id: new ObjectId(postID),
     });
 
     if (!engagement) {
-      return { upvotes: new Set<string>(), comments: [] }; // Return empty
+      return { upvotes: [], comments: [] }; // Return empty arrays
     }
 
-    // Convert ObjectId[] to Set<string> for a clean, primitive-based return
-    const upvoteSet = new Set(
-      engagement.upvotes.map((id) => id.toHexString()),
-    );
+    // Convert ObjectId[] to string[] for proper JSON serialization
+    const upvotes = engagement.upvotes.map((id) => id.toHexString());
 
-    return { upvotes: upvoteSet, comments: engagement.comments };
+    // Convert comments with ObjectId fields to strings
+    const comments = engagement.comments.map((comment) => ({
+      commentID: comment.commentID.toHexString(),
+      authorID: comment.authorID.toHexString(),
+      text: comment.text,
+      createdAt: comment.createdAt.toISOString(),
+    }));
+
+    return { upvotes, comments };
   }
 
   /**
    * Toggles a user's upvote on a post.
    * Corresponds to the `toggleUpvote` action.
    */
-  async toggleUpvote(
-    postID: string,
-    userID: string,
-  ): Promise<{ upvoted: boolean; total: number }> {
+  async toggleUpvote(args: {
+    postID: string;
+    userID: string;
+  }): Promise<{ upvoted: boolean; total: number }> {
+    const { postID, userID } = args;
+    
     if (!ObjectId.isValid(postID) || !ObjectId.isValid(userID)) {
       throw new Error("Invalid postID or userID provided.");
     }
@@ -88,11 +103,18 @@ export class EngagementConcept {
    * Adds a comment to a post.
    * Corresponds to the `addComment` action.
    */
-  async addComment(
-    postID: string,
-    authorID: string, // Renamed from userID to match spec
-    text: string,
-  ): Promise<Comment> {
+  async addComment(args: {
+    postID: string;
+    authorID: string;
+    text: string;
+  }): Promise<{
+    commentID: string;
+    authorID: string;
+    text: string;
+    createdAt: string;
+  }> {
+    const { postID, authorID, text } = args;
+    
     if (!ObjectId.isValid(postID) || !ObjectId.isValid(authorID)) {
       throw new Error("Invalid postID or authorID provided.");
     }
@@ -109,18 +131,27 @@ export class EngagementConcept {
       { $push: { comments: newComment } },
       { upsert: true }, // Create engagement doc if it doesn't exist
     );
-    return newComment;
+    
+    // Return serialized version for JSON response
+    return {
+      commentID: newComment.commentID.toHexString(),
+      authorID: newComment.authorID.toHexString(),
+      text: newComment.text,
+      createdAt: newComment.createdAt.toISOString(),
+    };
   }
 
   /**
    * Deletes a comment from a post, checking for ownership.
    * Corresponds to the `deleteComment` action.
    */
-  async deleteComment(
-    postID: string,
-    commentID: string,
-    userID: string,
-  ): Promise<boolean> {
+  async deleteComment(args: {
+    postID: string;
+    commentID: string;
+    userID: string;
+  }): Promise<boolean> {
+    const { postID, commentID, userID } = args;
+    
     if (
       !ObjectId.isValid(postID) ||
       !ObjectId.isValid(commentID) ||
@@ -149,12 +180,14 @@ export class EngagementConcept {
    * Edits a comment on a post, checking for ownership.
    * Corresponds to the `editComment` action.
    */
-  async editComment(
-    postID: string,
-    commentID: string,
-    userID: string,
-    newText: string,
-  ): Promise<boolean> {
+  async editComment(args: {
+    postID: string;
+    commentID: string;
+    userID: string;
+    newText: string;
+  }): Promise<boolean> {
+    const { postID, commentID, userID, newText } = args;
+    
     if (
       !ObjectId.isValid(postID) ||
       !ObjectId.isValid(commentID) ||

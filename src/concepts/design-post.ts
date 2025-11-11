@@ -22,13 +22,15 @@ export class DesignPostConcept {
    * Creates a new post.
    * Corresponds to the `createPost` action.
    */
-  async createPost(
-    authorID: string,
-    templateID: string,
-    title: string,
-    description: string,
-    imageURL: string,
-  ): Promise<string> {
+  async createPost(args: {
+    authorID: string;
+    templateID: string;
+    title: string;
+    description: string;
+    imageURL: string;
+  }): Promise<string> {
+    const { authorID, templateID, title, description, imageURL } = args;
+    
     if (!ObjectId.isValid(authorID) || !ObjectId.isValid(templateID)) {
       throw new Error("Invalid author or template ID.");
     }
@@ -50,44 +52,108 @@ export class DesignPostConcept {
    * Retrieves a single post by its ID.
    * Corresponds to the `getPost` action.
    */
-  async getPost(postID: string): Promise<Post | null> {
+  async getPost(args: { postID: string }): Promise<{
+    _id: string;
+    authorID: string;
+    templateID: string;
+    title: string;
+    description: string;
+    imageURL: string;
+    createdAt: string;
+  } | null> {
+    const { postID } = args;
     if (!ObjectId.isValid(postID)) return null;
-    return await this.posts.findOne({ _id: new ObjectId(postID) });
+    const post = await this.posts.findOne({ _id: new ObjectId(postID) });
+    
+    if (!post) return null;
+    
+    // Serialize ObjectIds to strings for JSON response
+    return {
+      _id: post._id.toHexString(),
+      authorID: post.authorID.toHexString(),
+      templateID: post.templateID.toHexString(),
+      title: post.title,
+      description: post.description,
+      imageURL: post.imageURL,
+      createdAt: post.createdAt.toISOString(),
+    };
   }
 
   /**
    * Finds all posts associated with a specific room template.
    * Corresponds to the `findPostsByTemplate` action.
    */
-  async findPostsByTemplate(templateID: string): Promise<Post[]> {
+  async findPostsByTemplate(args: { templateID: string }): Promise<Array<{
+    _id: string;
+    authorID: string;
+    templateID: string;
+    title: string;
+    description: string;
+    imageURL: string;
+    createdAt: string;
+  }>> {
+    const { templateID } = args;
     if (!ObjectId.isValid(templateID)) return [];
-    return await this.posts.find({ templateID: new ObjectId(templateID) })
+    const posts = await this.posts.find({ templateID: new ObjectId(templateID) })
       .sort({ createdAt: -1 }) // Sort newest first
       .toArray();
+    
+    // Serialize ObjectIds to strings for JSON response
+    return posts.map(post => ({
+      _id: post._id.toHexString(),
+      authorID: post.authorID.toHexString(),
+      templateID: post.templateID.toHexString(),
+      title: post.title,
+      description: post.description,
+      imageURL: post.imageURL,
+      createdAt: post.createdAt.toISOString(),
+    }));
   }
 
   /**
    * Finds all posts created by a specific author.
    * Corresponds to the `findPostsByAuthor` action.
    */
-  async findPostsByAuthor(authorID: string): Promise<Post[]> {
+  async findPostsByAuthor(args: { authorID: string }): Promise<Array<{
+    _id: string;
+    authorID: string;
+    templateID: string;
+    title: string;
+    description: string;
+    imageURL: string;
+    createdAt: string;
+  }>> {
+    const { authorID } = args;
     if (!ObjectId.isValid(authorID)) return [];
-    return await this.posts.find({ authorID: new ObjectId(authorID) })
+    const posts = await this.posts.find({ authorID: new ObjectId(authorID) })
       .sort({ createdAt: -1 }) // Sort newest first
       .toArray();
+    
+    // Serialize ObjectIds to strings for JSON response
+    return posts.map(post => ({
+      _id: post._id.toHexString(),
+      authorID: post.authorID.toHexString(),
+      templateID: post.templateID.toHexString(),
+      title: post.title,
+      description: post.description,
+      imageURL: post.imageURL,
+      createdAt: post.createdAt.toISOString(),
+    }));
   }
 
   /**
    * Edits the content of a post, checking for ownership.
    * Corresponds to the `editPost` action.
    */
-  async editPost(
-    postID: string,
-    userID: string,
-    title?: string,
-    description?: string,
-    imageURL?: string,
-  ): Promise<boolean> {
+  async editPost(args: {
+    postID: string;
+    userID: string;
+    title?: string;
+    description?: string;
+    imageURL?: string;
+  }): Promise<boolean> {
+    const { postID, userID, title, description, imageURL } = args;
+    
     if (!ObjectId.isValid(postID) || !ObjectId.isValid(userID)) {
       return false;
     }
@@ -127,7 +193,9 @@ export class DesignPostConcept {
    * Deletes a post, checking for ownership.
    * Corresponds to the `deletePost` action.
    */
-  async deletePost(postID: string, userID: string): Promise<boolean> {
+  async deletePost(args: { postID: string; userID: string }): Promise<boolean> {
+    const { postID, userID } = args;
+    
     if (!ObjectId.isValid(postID) || !ObjectId.isValid(userID)) {
       return false;
     }

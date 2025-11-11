@@ -1,8 +1,0 @@
-# Ignore all built frontend files in public directory
-*
-
-# Except the placeholder files
-!.gitkeep
-!index.html
-!.gitignore
-

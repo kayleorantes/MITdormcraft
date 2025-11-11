@@ -16,35 +16,77 @@ export class RoomTemplateConcept {
 
   /**
    * Adds a new room template to the catalog.
+   * If a template with the same dormName and roomType already exists, returns the existing template ID.
    * Corresponds to the `addTemplate` action.
    */
-  async addTemplate(dormName: string, roomType: string): Promise<string> {
+  async addTemplate(args: { dormName: string; roomType: string }): Promise<{
+    templateID: string;
+    dormName: string;
+    roomType: string;
+  }> {
+    const { dormName, roomType } = args;
+    
+    // Check if template already exists
+    const existing = await this.templates.findOne({ dormName, roomType });
+    
+    if (existing) {
+      // Return existing template
+      return {
+        templateID: existing._id.toHexString(),
+        dormName: existing.dormName,
+        roomType: existing.roomType
+      };
+    }
+    
+    // Create new template
     const template: Omit<RoomTemplate, "_id"> = { dormName, roomType };
     const result = await this.templates.insertOne(template as RoomTemplate);
 
-    // Return the string ID of the new template
-    return result.insertedId.toHexString();
+    // Return the new template
+    return {
+      templateID: result.insertedId.toHexString(),
+      dormName,
+      roomType
+    };
   }
 
   /**
    * Retrieves a single template by its ID.
    * Corresponds to the `getTemplate` action.
    */
-  async getTemplate(templateID: string): Promise<RoomTemplate | null> {
+  async getTemplate(args: { templateID: string }): Promise<{
+    _id: string;
+    dormName: string;
+    roomType: string;
+  } | null> {
+    const { templateID } = args;
     if (!ObjectId.isValid(templateID)) {
       return null;
     }
-    return await this.templates.findOne({ _id: new ObjectId(templateID) });
+    const template = await this.templates.findOne({ _id: new ObjectId(templateID) });
+    
+    if (!template) return null;
+    
+    // Serialize ObjectId to string for JSON response
+    return {
+      _id: template._id.toHexString(),
+      dormName: template.dormName,
+      roomType: template.roomType,
+    };
   }
 
   /**
    * Finds templates based on optional filters for dorm name and room type.
-   * CorDresponds to the `findTemplates` action.
+   * Corresponds to the `findTemplates` action.
    */
   async findTemplates(
-    params: { dormName?: string; roomType?: string },
-  ): Promise<RoomTemplate[]> {
-    const { dormName, roomType } = params; // Get values from the object
+    params?: { dormName?: string; roomType?: string },
+  ): Promise<Array<{
+    _id: string;
+    dormName: string;
+    roomType: string;
+  }>> {
+    const { dormName, roomType } = params || {}; // Get values from the object, handle undefined
     const filter: Partial<RoomTemplate> = {};
     if (dormName) {
       filter.dormName = dormName;
@@ -52,18 +94,27 @@ export class RoomTemplateConcept {
     if (roomType) {
       filter.roomType = roomType;
     }
-    return await this.templates.find(filter).toArray();
+    const templates = await this.templates.find(filter).toArray();
+    
+    // Serialize ObjectIds to strings for JSON response
+    return templates.map(template => ({
+      _id: template._id.toHexString(),
+      dormName: template.dormName,
+      roomType: template.roomType,
+    }));
   }
 
   /**
    * Updates an existing room template.
    * Corresponds to the `updateTemplate` action.
    */
-  async updateTemplate(
-    templateID: string,
-    dormName?: string,
-    roomType?: string,
-  ): Promise<boolean> {
+  async updateTemplate(args: {
+    templateID: string;
+    dormName?: string;
+    roomType?: string;
+  }): Promise<boolean> {
+    const { templateID, dormName, roomType } = args;
+    
     if (!ObjectId.isValid(templateID)) {
       return false;
     }
@@ -94,7 +145,9 @@ export class RoomTemplateConcept {
    * Deletes a room template from the catalog.
    * Corresponds to the `deleteTemplate` action.
    */
-  async deleteTemplate(templateID: string): Promise<boolean> {
+  async deleteTemplate(args: { templateID: string }): Promise<boolean> {
+    const { templateID } = args;
+    
     if (!ObjectId.isValid(templateID)) {
       return false;
     }

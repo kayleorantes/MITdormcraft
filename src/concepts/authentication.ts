@@ -1,6 +1,6 @@
-import { Collection, Db, ObjectId } from "mongodb";
-import { User } from "./user.ts";
-import * as bcrypt from "bcryptjs";
+import { Collection, Db, ObjectId } from "npm:mongodb";
+import { User } from "./user-account.ts";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 // --- Type Definitions ---
 
@@ -27,11 +27,22 @@ export class AuthenticationConcept {
    * Registers a new user, creating both a User and a Credential document.
    */
   async registerAndCreateAccount(
-    username: string,
-    mitKerberos: string,
-    bio: string,
-    credential_data: string,
+    params: { username: string; mitKerberos: string; bio: string; credential_data: string } | string,
+    mitKerberosParam?: string,
+    bioParam?: string,
+    credential_dataParam?: string,
   ): Promise<string> {
+    // Handle both object and individual parameters for flexibility
+    let username: string, mitKerberos: string, bio: string, credential_data: string;
+    
+    if (typeof params === 'object') {
+      ({ username, mitKerberos, bio, credential_data } = params);
+    } else {
+      username = params;
+      mitKerberos = mitKerberosParam!;
+      bio = bioParam!;
+      credential_data = credential_dataParam!;
+    }
     // 1. Check for duplicates
     const existingUser = await this.users.findOne({ username });
     if (existingUser) {
@@ -43,7 +54,7 @@ export class AuthenticationConcept {
     }
 
     // 2. Hash the password
-    const credentialHash = await bcrypt.hash(credential_data, 10);
+    const credentialHash = await bcrypt.hash(credential_data);
 
     // 3. Create the User document
     const userDoc: Omit<User, "_id"> = {
@@ -70,9 +81,18 @@ export class AuthenticationConcept {
    * Verifies a user's credentials and returns their userID if valid.
    */
   async verifyCredentials(
-    mitKerberos: string,
-    credential_data: string,
+    params: { mitKerberos: string; credential_data: string } | string,
+    credential_dataParam?: string,
   ): Promise<string | null> {
+    // Handle both object and individual parameters for flexibility
+    let mitKerberos: string, credential_data: string;
+    
+    if (typeof params === 'object') {
+      ({ mitKerberos, credential_data } = params);
+    } else {
+      mitKerberos = params;
+      credential_data = credential_dataParam!;
+    }
     // 1. Find the user by kerberos
     const cred = await this.credentials.findOne({ mitKerberos });
     if (!cred) {

@@ -1,112 +1,237 @@
-# MITdormcraft
+# MITdormcraft Backend
 
-An inspiration and sharing platform for MIT dorm room decoration - "Instagram for MIT dorms."
+Backend API server for MITdormcraft - an MIT dorm room design inspiration platform where MIT students can share and discover dorm room design ideas.
 
-## Project Structure
+## 📚 Assignment 4c Documentation
 
-This is the backend repository built with Deno, MongoDB, and a concept-oriented architecture.
+> **🎯 START HERE**: 
+> - **[Project Overview](PROJECT_OVERVIEW.md)** - Complete file structure and architecture explanation
+> - **[Completion Summary](COMPLETION_SUMMARY.md)** - What's done and what you need to do
 
-- **Backend Framework:** Deno with Hono web framework
-- **Database:** MongoDB
-- **Architecture:** Concept-oriented design with independent, modular concepts
-- **Frontend:** Served from `./public` directory (see [DEPLOYMENT.md](./DEPLOYMENT.md))
+### Core Documents
+- **[Design Document](DESIGN.md)** - Complete design overview, concept specifications, and changes from initial design
+- **[Reflection Document](REFLECTION.md)** - Reflection on project experience, skills acquired, and LLM usage
+- **[Video Instructions](VIDEO_INSTRUCTIONS.md)** - Guide for creating demo video and collecting action trace
+- **[Deployment Guide](DEPLOYMENT.md)** - Detailed deployment instructions for Render and MongoDB Atlas
+- **[Testing Checklist](TESTING_CHECKLIST.md)** - Comprehensive testing checklist before submission
 
-## Concepts
+### Deliverables
+- **Demo Video**: [Add your video link here]
+- **Action Trace**: [TRACE.md](TRACE.md) or [TRACE.txt](TRACE.txt) (to be added)
+- **Deployed App**: https://mit-dormcraft.onrender.com (to be verified)
 
-The application is built on five independent concepts:
+## 🏗️ Architecture Overview
 
-- **`User`** - User profiles and account management
-- **`Authentication`** - Secure credential management and sessions
-- **`RoomTemplate`** - MIT room types and categories
-- **`DesignPost`** - User-submitted room design photos and descriptions
-- **`Engagement`** - Likes, comments, and social interaction
+### Concept-Oriented Design
+This project implements six core concepts:
 
-## Getting Started
+1. **User Account** - User profiles with MIT Kerberos integration
+2. **Authentication** - Secure credential management with password hashing
+3. **Session** - Token-based authentication with automatic expiration
+4. **Room Template** - Categorization by dorm name and room type
+5. **Design Post** - User-submitted designs with images and descriptions
+6. **Engagement** - Likes and comments on posts
 
-### Prerequisites
+### Synchronization & Security
+- **Requesting Concept**: Acts as secure gateway between HTTP requests and concepts
+- **Included Actions**: Public read-only operations (browsing, viewing)
+- **Excluded Actions**: Authenticated write operations (creating, editing, deleting)
+- **Authentication**: Session tokens validated by Requesting concept before routing to concept actions
 
-- [Deno](https://deno.land/) 2.5.5 or later
-- MongoDB instance (local or cloud)
+See [DESIGN.md](DESIGN.md) for detailed architecture documentation.
+
+## 🚀 Deployment
+
+### Production
+- **Platform**: Render
+- **URL**: https://mit-dormcraft.onrender.com
+- **Database**: MongoDB Atlas
+- **Container**: Docker with Deno 2.5.5
 
 ### Environment Variables
+Required environment variables:
+- `MONGODB_URI` - MongoDB connection string
+- `PORT` - Server port (default: 8000)
 
-Create a `.env` file:
+## 🛠️ Local Development
 
-```env
-MONGO_URI=your_mongodb_connection_string
-PORT=8000
-REQUESTING_BASE_URL=/api
-REQUESTING_ALLOWED_DOMAIN=*
-```
+### Prerequisites
+- Deno 2.5.5 or later
+- MongoDB instance (local or Atlas)
 
-### Installation
-
-1. Clone the repository
-2. Install dependencies: `deno install`
-3. Build the project: `deno task build`
-
-### Running Locally
-
+### Setup
 ```bash
+# Clone the repository
+git clone [your-repo-url]
+cd MITdormcraft
+
+# Set environment variables
+export MONGODB_URI="your-mongodb-connection-string"
+
+# Generate concept imports
+deno task build
+
 # Start the server
 deno task start
+```
 
-# Or run the concept server (alternative)
+The server will start on `http://localhost:8000`
+
+### Testing Routes
+```bash
+# Check server is running
+curl http://localhost:8000/
+
+# Browse templates (included action - no auth required)
+curl -X POST http://localhost:8000/api/RoomTemplate/findTemplates \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Create post (excluded action - requires auth token)
+curl -X POST http://localhost:8000/api/DesignPost/createPost \
+  -H "Content-Type: application/json" \
+  -d '{"token":"your-session-token","templateID":"...","title":"...","description":"...","imageURL":"..."}'
+```
+
+## 📡 API Endpoints
+
+### Included Routes (Public)
+```
+✅ Read-only operations (no authentication required):
+  - POST /api/RoomTemplate/getTemplate
+  - POST /api/RoomTemplate/findTemplates
+  - POST /api/DesignPost/getPost
+  - POST /api/DesignPost/findPostsByTemplate
+  - POST /api/DesignPost/findPostsByAuthor
+  - POST /api/Engagement/getEngagementForPost
+  - POST /api/UserAccount/getUser
+  - POST /api/UserAccount/getUserByUsername
+
+✅ Authentication operations:
+  - POST /api/Authentication/registerAndCreateAccount
+  - POST /api/Authentication/verifyCredentials
+  - POST /api/Session/createSession
+  - POST /api/Session/validateSession
+  - POST /api/Session/endSession
+```
+
+### Excluded Routes (Require Authentication)
+```
+🔒 Write operations (session token required):
+  - POST /api/DesignPost/createPost
+  - POST /api/DesignPost/editPost
+  - POST /api/DesignPost/deletePost
+  - POST /api/Engagement/toggleUpvote
+  - POST /api/Engagement/addComment
+  - POST /api/Engagement/editComment
+  - POST /api/Engagement/deleteComment
+  - POST /api/UserAccount/updateUserProfile
+  - POST /api/RoomTemplate/addTemplate
+  - POST /api/RoomTemplate/updateTemplate
+  - POST /api/RoomTemplate/deleteTemplate
+```
+
+### Authentication Flow
+1. Register: `POST /api/Authentication/registerAndCreateAccount`
+   - Body: `{ username, mitKerberos, bio, credential_data }`
+   - Returns: `userID`
+2. Create Session: `POST /api/Session/createSession`
+   - Body: `{ userID }`
+   - Returns: `token`
+3. Use Token: Include `token` in body of all excluded action requests
+   - Example: `{ token: "abc123...", postID: "..." }`
+
+## 🧪 Development Commands
+
+```bash
+# Generate concept imports (run after modifying concepts)
+deno task build
+# or
+deno task import
+
+# Start server (uses main.ts with sync engine)
+deno task start
+
+# Start server (alternative command)
 deno task concepts
 ```
 
-The server will start at `http://localhost:8000`
+## 📁 Project Structure
 
-- **API:** `http://localhost:8000/api/*`
-- **Frontend:** `http://localhost:8000/`
-
-### Running Tests
-
-```bash
-# Test individual concepts
-deno test src/concepts/user.test.ts
-deno test src/concepts/authentication.test.ts
-deno test src/concepts/room-template.test.ts
-deno test src/concepts/design-post.test.ts
-deno test src/concepts/engagement.test.ts
+```
+MITdormcraft/
+├── DESIGN.md                    # Design documentation
+├── REFLECTION.md                # Project reflection
+├── VIDEO_INSTRUCTIONS.md        # Guide for demo video
+├── README.md                    # This file
+├── Dockerfile                   # Container configuration
+├── deno.json                    # Deno configuration and tasks
+├── src/
+│   ├── main.ts                  # Entry point with sync engine
+│   ├── concept_server.ts        # (deprecated - old direct routing)
+│   ├── concepts/
+│   │   ├── concepts.ts          # Auto-generated concept barrel
+│   │   ├── authentication.ts    # Authentication concept
+│   │   ├── session.ts           # Session concept
+│   │   ├── user-account.ts      # User concept
+│   │   ├── room-template.ts     # RoomTemplate concept
+│   │   ├── design-post.ts       # DesignPost concept
+│   │   ├── engagement.ts        # Engagement concept
+│   │   └── Requesting/
+│   │       └── RequestingConcept.ts  # Authentication gateway
+│   ├── syncs/
+│   │   ├── syncs.ts             # Sync registration
+│   │   ├── auth.sync.ts         # Auth sync notes
+│   │   └── engagement.sync.ts   # Engagement sync notes
+│   ├── engine/                  # Sync engine infrastructure
+│   │   ├── mod.ts
+│   │   ├── sync.ts
+│   │   ├── actions.ts
+│   │   └── ...
+│   └── utils/
+│       ├── database.ts          # MongoDB connection
+│       └── generate_imports.ts  # Concept import generator
 ```
 
-## Deployment
+## 🔐 Security Features
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions on deploying to Render with your frontend.
+- **Password Hashing**: bcrypt with salt rounds for secure credential storage
+- **Session Tokens**: Cryptographically secure random tokens (64 hex characters)
+- **Token Expiration**: Sessions expire after 7 days with automatic cleanup
+- **Ownership Checks**: Edit/delete operations verify user owns the resource
+- **Backend Authentication**: All security checks in backend (not bypassable by client)
 
-## API Documentation
+## 🎓 6.1040 Concepts Demonstrated
 
-API endpoints are automatically generated for each concept:
+- ✅ **Concept Independence**: Each concept has clear state and actions
+- ✅ **Synchronization**: Requesting concept coordinates authentication across concepts
+- ✅ **Back-End Syncs**: Security enforced server-side, not client-side
+- ✅ **Data Integrity**: Atomic operations and ownership checks
+- ✅ **Deployment**: Production-ready containerized deployment
 
-- **User:** `/api/User/*`
-- **Authentication:** `/api/Authentication/*`
-- **RoomTemplate:** `/api/RoomTemplate/*`
-- **DesignPost:** `/api/DesignPost/*`
-- **Engagement:** `/api/Engagement/*`
+## 📝 Notes
 
-Each concept exposes its methods as REST endpoints. For detailed API specifications, see the design docs in `./design/concepts/`.
+- **Current Implementation**: Uses imperative authentication in RequestingConcept instead of declarative syncs (see [DESIGN.md](DESIGN.md) for rationale)
+- **Sync Engine**: Infrastructure in place for future declarative syncs (e.g., notifications)
+- **Database**: MongoDB with TypeScript for type-safe concept implementations
+- **Frontend**: Separate repository (link to be added)
 
-## Project Documentation
+## 📮 Submission Checklist
 
-- `./design/` - Concept specifications and design documents
-- `./design/concepts/` - Individual concept specifications
-- `./design/background/` - Architecture and implementation guides
-- `./src/application-reflection.md` - Design decisions and development reflection
+For Assignment 4c submission:
+- [ ] Design document (`DESIGN.md`) ✅
+- [ ] Reflection document (`REFLECTION.md`) ✅  
+- [ ] Video instructions (`VIDEO_INSTRUCTIONS.md`) ✅
+- [ ] Demo video (link in this README)
+- [ ] Action trace (`TRACE.md` or `TRACE.txt`)
+- [ ] Deployed app (URL verified)
+- [ ] Front-end commit hash
+- [ ] Back-end commit hash
+- [ ] Google form submitted
 
-## Docker
+---
 
-Build and run with Docker:
+**Course**: MIT 6.1040 Fall 2025  
+**Assignment**: 4c - Completing Your Personal Project  
+**Author**: [Your Name]
 
-```bash
-docker build -t mitdormcraft .
-docker run -p 8000:8000 --env-file .env mitdormcraft
-```
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Contributing
-
-This project was developed as part of MIT's 6.1040 Software Studio course.
