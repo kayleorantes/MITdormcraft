@@ -102,10 +102,10 @@ export class DesignPostConcept {
     imageURL: string;
     createdAt: string;
   }>> {
-    const rawLimit = args?.limit ?? 50;
-    const limit = Math.max(1, Math.min(rawLimit, 200));
+    const rawLimit = args?.limit ?? 10; // Default to 10 posts (images are large base64)
+    const limit = Math.max(1, Math.min(rawLimit, 50)); // Max 50 posts at once
     const offset = Math.max(0, args?.offset ?? 0);
-    const includeImages = args?.includeImages ?? false;
+    const includeImages = args?.includeImages ?? true; // Include images by default
     
     // Use projection to exclude imageURL if not needed (improves performance)
     const projection = includeImages ? {} : { imageURL: 0 };
