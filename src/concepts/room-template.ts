@@ -165,3 +165,5 @@ export class RoomTemplateConcept {
     return result.deletedCount === 1;
   }
 }
+
+export default RoomTemplateConcept;
