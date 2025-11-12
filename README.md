@@ -45,7 +45,7 @@ See [DESIGN.md](DESIGN.md) for detailed architecture documentation.
 ### Production
 - **Platform**: Render
 - **URL**: https://mit-dormcraft.onrender.com
-- **Database**: MongoDB Atlas
+- **Database**: MongoDB Atlas  
 - **Container**: Docker with Deno 2.5.5
 
 ### Environment Variables
