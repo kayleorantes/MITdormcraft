@@ -25,19 +25,19 @@ export class RoomTemplateConcept {
     roomType: string;
   }> {
     const { dormName, roomType } = args;
-    
+
     // Check if template already exists
     const existing = await this.templates.findOne({ dormName, roomType });
-    
+
     if (existing) {
       // Return existing template
       return {
         templateID: existing._id.toHexString(),
         dormName: existing.dormName,
-        roomType: existing.roomType
+        roomType: existing.roomType,
       };
     }
-    
+
     // Create new template
     const template: Omit<RoomTemplate, "_id"> = { dormName, roomType };
     const result = await this.templates.insertOne(template as RoomTemplate);
@@ -46,7 +46,7 @@ export class RoomTemplateConcept {
     return {
       templateID: result.insertedId.toHexString(),
       dormName,
-      roomType
+      roomType,
     };
   }
 
@@ -54,19 +54,23 @@ export class RoomTemplateConcept {
    * Retrieves a single template by its ID.
    * Corresponds to the `getTemplate` action.
    */
-  async getTemplate(args: { templateID: string }): Promise<{
-    _id: string;
-    dormName: string;
-    roomType: string;
-  } | null> {
+  async getTemplate(args: { templateID: string }): Promise<
+    {
+      _id: string;
+      dormName: string;
+      roomType: string;
+    } | null
+  > {
     const { templateID } = args;
     if (!ObjectId.isValid(templateID)) {
       return null;
     }
-    const template = await this.templates.findOne({ _id: new ObjectId(templateID) });
-    
+    const template = await this.templates.findOne({
+      _id: new ObjectId(templateID),
+    });
+
     if (!template) return null;
-    
+
     // Serialize ObjectId to string for JSON response
     return {
       _id: template._id.toHexString(),
@@ -81,11 +85,13 @@ export class RoomTemplateConcept {
    */
   async findTemplates(
     params?: { dormName?: string; roomType?: string },
-  ): Promise<Array<{
-    _id: string;
-    dormName: string;
-    roomType: string;
-  }>> {
+  ): Promise<
+    Array<{
+      _id: string;
+      dormName: string;
+      roomType: string;
+    }>
+  > {
     const { dormName, roomType } = params || {}; // Get values from the object, handle undefined
     const filter: Partial<RoomTemplate> = {};
     if (dormName) {
@@ -95,9 +101,9 @@ export class RoomTemplateConcept {
       filter.roomType = roomType;
     }
     const templates = await this.templates.find(filter).toArray();
-    
+
     // Serialize ObjectIds to strings for JSON response
-    return templates.map(template => ({
+    return templates.map((template) => ({
       _id: template._id.toHexString(),
       dormName: template.dormName,
       roomType: template.roomType,
@@ -114,7 +120,7 @@ export class RoomTemplateConcept {
     roomType?: string;
   }): Promise<boolean> {
     const { templateID, dormName, roomType } = args;
-    
+
     if (!ObjectId.isValid(templateID)) {
       return false;
     }
@@ -147,7 +153,7 @@ export class RoomTemplateConcept {
    */
   async deleteTemplate(args: { templateID: string }): Promise<boolean> {
     const { templateID } = args;
-    
+
     if (!ObjectId.isValid(templateID)) {
       return false;
     }
