@@ -82,14 +82,32 @@ export class DesignPostConcept {
     // Fetch template information
     const template = await this.templates.findOne({ _id: post.templateID });
     
+    // If template doesn't exist, we have a data integrity issue
+    if (!template) {
+      console.warn(`Post ${postID} references non-existent template ${post.templateID.toHexString()}`);
+      // Return with placeholder values that are more descriptive than empty strings
+      return {
+        _id: post._id.toHexString(),
+        postID: post._id.toHexString(),
+        authorID: post.authorID.toHexString(),
+        templateID: post.templateID.toHexString(),
+        dormName: "Unknown Dorm",
+        roomType: "Unknown Type",
+        title: post.title,
+        description: post.description,
+        imageURL: post.imageURL,
+        createdAt: post.createdAt.toISOString(),
+      };
+    }
+    
     // Serialize ObjectIds to strings for JSON response
     return {
       _id: post._id.toHexString(),
       postID: post._id.toHexString(), // Add postID for frontend compatibility
       authorID: post.authorID.toHexString(),
       templateID: post.templateID.toHexString(),
-      dormName: template?.dormName || "",
-      roomType: template?.roomType || "",
+      dormName: template.dormName,
+      roomType: template.roomType,
       title: post.title,
       description: post.description,
       imageURL: post.imageURL,
@@ -148,18 +166,25 @@ export class DesignPostConcept {
     const posts = await this.posts.aggregate(pipeline).toArray();
     
     // Serialize ObjectIds to strings for JSON response
-    return posts.map(post => ({
-      _id: post._id.toHexString(),
-      postID: post._id.toHexString(), // Add postID for frontend compatibility
-      authorID: post.authorID.toHexString(),
-      templateID: post.templateID.toHexString(),
-      dormName: post.template?.dormName || "",
-      roomType: post.template?.roomType || "",
-      title: post.title,
-      description: post.description,
-      imageURL: includeImages ? (post.imageURL || '') : '', // Empty string if not included
-      createdAt: post.createdAt.toISOString(),
-    }));
+    return posts.map(post => {
+      // Warn if template data is missing
+      if (!post.template) {
+        console.warn(`Post ${post._id.toHexString()} references non-existent template ${post.templateID.toHexString()}`);
+      }
+      
+      return {
+        _id: post._id.toHexString(),
+        postID: post._id.toHexString(), // Add postID for frontend compatibility
+        authorID: post.authorID.toHexString(),
+        templateID: post.templateID.toHexString(),
+        dormName: post.template?.dormName || "Unknown Dorm",
+        roomType: post.template?.roomType || "Unknown Type",
+        title: post.title,
+        description: post.description,
+        imageURL: includeImages ? (post.imageURL || '') : '', // Empty string if not included
+        createdAt: post.createdAt.toISOString(),
+      };
+    });
   }
 
   /**
@@ -209,18 +234,25 @@ export class DesignPostConcept {
     const posts = await this.posts.aggregate(pipeline).toArray();
     
     // Serialize ObjectIds to strings for JSON response
-    return posts.map(post => ({
-      _id: post._id.toHexString(),
-      postID: post._id.toHexString(), // Add postID for frontend compatibility
-      authorID: post.authorID.toHexString(),
-      templateID: post.templateID.toHexString(),
-      dormName: post.template?.dormName || "",
-      roomType: post.template?.roomType || "",
-      title: post.title,
-      description: post.description,
-      imageURL: post.imageURL,
-      createdAt: post.createdAt.toISOString(),
-    }));
+    return posts.map(post => {
+      // Warn if template data is missing
+      if (!post.template) {
+        console.warn(`Post ${post._id.toHexString()} references non-existent template ${post.templateID.toHexString()}`);
+      }
+      
+      return {
+        _id: post._id.toHexString(),
+        postID: post._id.toHexString(), // Add postID for frontend compatibility
+        authorID: post.authorID.toHexString(),
+        templateID: post.templateID.toHexString(),
+        dormName: post.template?.dormName || "Unknown Dorm",
+        roomType: post.template?.roomType || "Unknown Type",
+        title: post.title,
+        description: post.description,
+        imageURL: post.imageURL,
+        createdAt: post.createdAt.toISOString(),
+      };
+    });
   }
 
   /**
@@ -270,18 +302,25 @@ export class DesignPostConcept {
     const posts = await this.posts.aggregate(pipeline).toArray();
     
     // Serialize ObjectIds to strings for JSON response
-    return posts.map(post => ({
-      _id: post._id.toHexString(),
-      postID: post._id.toHexString(), // Add postID for frontend compatibility
-      authorID: post.authorID.toHexString(),
-      templateID: post.templateID.toHexString(),
-      dormName: post.template?.dormName || "",
-      roomType: post.template?.roomType || "",
-      title: post.title,
-      description: post.description,
-      imageURL: post.imageURL,
-      createdAt: post.createdAt.toISOString(),
-    }));
+    return posts.map(post => {
+      // Warn if template data is missing
+      if (!post.template) {
+        console.warn(`Post ${post._id.toHexString()} references non-existent template ${post.templateID.toHexString()}`);
+      }
+      
+      return {
+        _id: post._id.toHexString(),
+        postID: post._id.toHexString(), // Add postID for frontend compatibility
+        authorID: post.authorID.toHexString(),
+        templateID: post.templateID.toHexString(),
+        dormName: post.template?.dormName || "Unknown Dorm",
+        roomType: post.template?.roomType || "Unknown Type",
+        title: post.title,
+        description: post.description,
+        imageURL: post.imageURL,
+        createdAt: post.createdAt.toISOString(),
+      };
+    });
   }
 
   /**

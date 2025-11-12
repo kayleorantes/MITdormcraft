@@ -24,12 +24,12 @@ export function sanitizePost(post: Post | any) {
     createdAt: post.createdAt?.toISOString ? post.createdAt.toISOString() : post.createdAt,
   };
   
-  // Include dormName and roomType if present
-  if (post.dormName !== undefined || post.roomType !== undefined) {
+  // Always include dormName and roomType if present (they should always be present now)
+  if (post.dormName !== undefined && post.roomType !== undefined) {
     return {
       ...basePost,
-      dormName: post.dormName || "",
-      roomType: post.roomType || "",
+      dormName: post.dormName,
+      roomType: post.roomType,
     };
   }
   
