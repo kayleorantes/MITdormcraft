@@ -54,7 +54,7 @@ const EXCLUDED_ACTIONS: Set<string> = new Set([
   "RoomTemplate/deleteTemplate",
 ]);
 
-export class RequestingConcept {
+class RequestingConcept {
   private concepts: any;
 
   /**
@@ -245,6 +245,9 @@ export class RequestingConcept {
     return INCLUDED_ACTIONS.has(path) || EXCLUDED_ACTIONS.has(path);
   }
 }
+
+export default RequestingConcept;
+export { RequestingConcept };
 
 /**
  * Start the HTTP server that routes requests to concepts
