@@ -4,21 +4,16 @@ Backend API server for MITdormcraft - an MIT dorm room design inspiration platfo
 
 ## 📚 Assignment 4c Documentation
 
-> **🎯 START HERE**: 
-> - **[Project Overview](PROJECT_OVERVIEW.md)** - Complete file structure and architecture explanation
-> - **[Completion Summary](COMPLETION_SUMMARY.md)** - What's done and what you need to do
-
 ### Core Documents
 - **[Design Document](DESIGN.md)** - Complete design overview, concept specifications, and changes from initial design
 - **[Reflection Document](REFLECTION.md)** - Reflection on project experience, skills acquired, and LLM usage
-- **[Video Instructions](VIDEO_INSTRUCTIONS.md)** - Guide for creating demo video and collecting action trace
 - **[Deployment Guide](DEPLOYMENT.md)** - Detailed deployment instructions for Render and MongoDB Atlas
-- **[Testing Checklist](TESTING_CHECKLIST.md)** - Comprehensive testing checklist before submission
+- **[Quick Start Guide](QUICK_START.md)** - Getting started with local development
 
 ### Deliverables
-- **Demo Video**: [Add your video link here]
-- **Action Trace**: [TRACE.md](TRACE.md) or [TRACE.txt](TRACE.txt) (to be added)
-- **Deployed App**: https://mit-dormcraft.onrender.com (to be verified)
+- **Demo Video**: [https://youtu.be/JkfNtzqBwAM](https://youtu.be/JkfNtzqBwAM)
+- **Action Trace**: [TRACE.md](TRACE.md)
+- **Deployed App**: https://mit-dormcraft.onrender.com
 
 ## 🏗️ Architecture Overview
 
@@ -162,7 +157,8 @@ deno task concepts
 MITdormcraft/
 ├── DESIGN.md                    # Design documentation
 ├── REFLECTION.md                # Project reflection
-├── VIDEO_INSTRUCTIONS.md        # Guide for demo video
+├── DEPLOYMENT.md                # Deployment guide
+├── TRACE.md                     # Action trace
 ├── README.md                    # This file
 ├── Dockerfile                   # Container configuration
 ├── deno.json                    # Deno configuration and tasks
@@ -214,17 +210,16 @@ MITdormcraft/
 - **Current Implementation**: Uses imperative authentication in RequestingConcept instead of declarative syncs (see [DESIGN.md](DESIGN.md) for rationale)
 - **Sync Engine**: Infrastructure in place for future declarative syncs (e.g., notifications)
 - **Database**: MongoDB with TypeScript for type-safe concept implementations
-- **Frontend**: Separate repository (link to be added)
+- **Frontend**: Separate repository
 
 ## 📮 Submission Checklist
 
 For Assignment 4c submission:
-- [ ] Design document (`DESIGN.md`) ✅
-- [ ] Reflection document (`REFLECTION.md`) ✅  
-- [ ] Video instructions (`VIDEO_INSTRUCTIONS.md`) ✅
-- [ ] Demo video (link in this README)
-- [ ] Action trace (`TRACE.md` or `TRACE.txt`)
-- [ ] Deployed app (URL verified)
+- [x] Design document ([DESIGN.md](DESIGN.md))
+- [x] Reflection document ([REFLECTION.md](REFLECTION.md))
+- [x] Demo video ([https://youtu.be/JkfNtzqBwAM](https://youtu.be/JkfNtzqBwAM))
+- [x] Action trace ([TRACE.md](TRACE.md))
+- [x] Deployed app (https://mit-dormcraft.onrender.com)
 - [ ] Front-end commit hash
 - [ ] Back-end commit hash
 - [ ] Google form submitted
@@ -232,6 +227,5 @@ For Assignment 4c submission:
 ---
 
 **Course**: MIT 6.1040 Fall 2025  
-**Assignment**: 4c - Completing Your Personal Project  
-**Author**: [Your Name]
+**Assignment**: 4c - Completing Your Personal Project
 
