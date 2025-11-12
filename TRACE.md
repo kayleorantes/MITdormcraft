@@ -1,86 +1,123 @@
-# Action Trace from Demo Video
-
-This file should contain the console output from your backend server during the demo video recording.
-
-## How to Populate This File
-
-1. Start your backend server locally or check Render logs
-2. Perform your user journey (registration, login, create post, like, comment, etc.)
-3. Copy the entire console output showing:
-   - Initial route registration (included vs excluded)
-   - Individual action traces with `[INCLUDED]` or `[EXCLUDED]` markers
-   - Authentication validations
-4. Paste the output below, replacing this placeholder text
-
-## Expected Trace Format
-
-Your trace should look similar to this example:
-
-```
-Scanning for concepts in 'src/concepts'...
-  -> Found concept: Requesting
-✅ Generated production barrel file: src/concepts/concepts.ts
-
-Registering routes...
-
-✅ INCLUDED ROUTES (passed through directly):
-  - RoomTemplate/getTemplate
-  - RoomTemplate/findTemplates
-  - DesignPost/getPost
-  - DesignPost/findPostsByTemplate
-  - DesignPost/findPostsByAuthor
-  - Engagement/getEngagementForPost
-  - UserAccount/getUser
-  - UserAccount/getUserByUsername
-  - Authentication/registerAndCreateAccount
-  - Authentication/verifyCredentials
-  - Session/createSession
-  - Session/validateSession
-  - Session/endSession
-
-🔒 EXCLUDED ROUTES (require syncs):
-  - DesignPost/createPost
-  - DesignPost/editPost
-  - DesignPost/deletePost
-  - Engagement/toggleUpvote
-  - Engagement/addComment
-  - Engagement/editComment
-  - Engagement/deleteComment
-  - UserAccount/updateUserProfile
-  - RoomTemplate/addTemplate
-  - RoomTemplate/updateTemplate
-  - RoomTemplate/deleteTemplate
-
-🚀 Server listening on http://localhost:8000
-
---- Demo Video User Journey Begins ---
-
-[INCLUDED] RoomTemplate/findTemplates -> RoomTemplate.findTemplates
+{
+    _id: '6913f6126f13762818536302',
+    postID: '6913f6126f13762818536302',
+    authorID: '6913f4af6f137628185362fb',
+    templateID: '6913f6116f13762818536301',
+    dormName: 'Burton-Conner',
+    roomType: 'Triple',
+    title: 'Space outside water fly!',
+    description: '',
+    imageURL: 'data:image/jpeg;base64,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'... 76907 more characters,
+    createdAt: '2025-11-12T02:50:58.016Z'
+  }
+]
 [INCLUDED] DesignPost/findPostsByTemplate -> DesignPost.findPostsByTemplate
-[INCLUDED] Authentication/registerAndCreateAccount -> Authentication.registerAndCreateAccount
-[INCLUDED] Session/createSession -> Session.createSession
-[EXCLUDED] DesignPost/createPost -> Requesting.request
-  -> Token validated for user: 507f1f77bcf86cd799439011
-  -> Routing to: DesignPost.createPost
-[INCLUDED] DesignPost/findPostsByTemplate -> DesignPost.findPostsByTemplate
-[EXCLUDED] Engagement/toggleUpvote -> Requesting.request
-  -> Token validated for user: 507f1f77bcf86cd799439011
-  -> Routing to: Engagement.toggleUpvote
+DesignPost.findPostsByTemplate { templateID: '6913fad1799c180a16a23a51' } => []
 [INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
-[EXCLUDED] Engagement/addComment -> Requesting.request
-  -> Token validated for user: 507f1f77bcf86cd799439011
-  -> Routing to: Engagement.addComment
-
---- Demo Video User Journey Complete ---
-```
-
-## Instructions
-
-**Replace this entire file content with your actual trace output before submission.**
-
-To collect the trace:
-- **Local**: Run `deno task start` and copy terminal output
-- **Render**: Go to Render dashboard > Logs tab and copy output
-
-See [VIDEO_INSTRUCTIONS.md](VIDEO_INSTRUCTIONS.md) for detailed instructions.
-
+[INCLUDED] UserAccount/getUser -> UserAccount.getUser
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+[INCLUDED] UserAccount/getUser -> UserAccount.getUser
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+[INCLUDED] Engagement/getEngagementForPost -> Engagement.getEngagementForPost
+Engagement.getEngagementForPost { postID: '6913f4606f137628185362fa' } => { upvotes: [], comments: [] }
+UserAccount.getUser { userID: '6913ed4e6f137628185362ef' } => {
+  userID: '6913ed4e6f137628185362ef',
+  username: 'Better Betty',
+  mitKerberos: 'betterb@mit.edu',
+  bio: 'MIT student interested in dorm design',
+  createdAt: '2025-11-12T02:13:34.729Z'
+}
+Engagement.getEngagementForPost { postID: '6913f6126f13762818536302' } => { upvotes: [], comments: [] }
+Engagement.getEngagementForPost { postID: '6913fcd43b7450c168c47bd0' } => {
+  upvotes: [ '6913fca33b7450c168c47bcd', '6913f4af6f137628185362fb' ],
+  comments: [
+    {
+      commentID: '6913fcec3b7450c168c47bd1',
+      authorID: '6913fca33b7450c168c47bcd',
+      text: 'i love a carpeted floor!',
+      createdAt: '2025-11-12T03:20:12.631Z'
+    },
+    {
+      commentID: '6913fd133b7450c168c47bd2',
+      authorID: '6913f4af6f137628185362fb',
+      text: 'me too!',
+      createdAt: '2025-11-12T03:20:51.793Z'
+    }
+  ]
+}
+UserAccount.getUser { userID: '6913e146c3659787c66e3d4a' } => {
+  userID: '6913e146c3659787c66e3d4a',
+  username: 'Kayle Orantes',
+  mitKerberos: 'korantes123@mit.edu',
+  bio: 'MIT student interested in dorm design',
+  createdAt: '2025-11-12T01:22:14.789Z'
+}
+Engagement.getEngagementForPost { postID: '6913f4606f137628185362fa' } => { upvotes: [], comments: [] }
+Engagement.getEngagementForPost { postID: '6913f6126f13762818536302' } => { upvotes: [], comments: [] }
+Engagement.getEngagementForPost { postID: '6913e159c3659787c66e3d4d' } => {
+  upvotes: [ '6913e146c3659787c66e3d4a' ],
+  comments: [
+    {
+      commentID: '6913e1a4c3659787c66e3d51',
+      authorID: '6913e187c3659787c66e3d4e',
+      text: 'cute!',
+      createdAt: '2025-11-12T01:23:48.937Z'
+    }
+  ]
+}
+Engagement.getEngagementForPost { postID: '6913fcd43b7450c168c47bd0' } => {
+  upvotes: [ '6913fca33b7450c168c47bcd', '6913f4af6f137628185362fb' ],
+  comments: [
+    {
+      commentID: '6913fcec3b7450c168c47bd1',
+      authorID: '6913fca33b7450c168c47bcd',
+      text: 'i love a carpeted floor!',
+      createdAt: '2025-11-12T03:20:12.631Z'
+    },
+    {
+      commentID: '6913fd133b7450c168c47bd2',
+      authorID: '6913f4af6f137628185362fb',
+      text: 'me too!',
+      createdAt: '2025-11-12T03:20:51.793Z'
+    }
+  ]
+}
+Engagement.getEngagementForPost { postID: '6913e159c3659787c66e3d4d' } => {
+  upvotes: [ '6913e146c3659787c66e3d4a' ],
+  comments: [
+    {
+      commentID: '6913e1a4c3659787c66e3d51',
+      authorID: '6913e187c3659787c66e3d4e',
+      text: 'cute!',
+      createdAt: '2025-11-12T01:23:48.937Z'
+    }
+  ]
+}
+Engagement.getEngagementForPost { postID: '6913ed666f137628185362f2' } => {
+  upvotes: [ '6913f42a6f137628185362f6' ],
+  comments: [
+    {
+      commentID: '6913f44a6f137628185362f9',
+      authorID: '6913f42a6f137628185362f6',
+      text: 'i love the colors!',
+      createdAt: '2025-11-12T02:43:22.092Z'
+    }
+  ]
+}
+Engagement.getEngagementForPost { postID: '6913ed666f137628185362f2' } => {
+  upvotes: [ '6913f42a6f137628185362f6' ],
+  comments: [
+    {
+      commentID: '6913f44a6f137628185362f9',
+      authorID: '6913f42a6f137628185362f6',
+      text: 'i love the colors!',
+      createdAt: '2025-11-12T02:43:22.092Z'
+    }
+  ]
+}
