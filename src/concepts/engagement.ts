@@ -213,3 +213,5 @@ export class EngagementConcept {
     return result.modifiedCount === 1;
   }
 }
+
+export default EngagementConcept;

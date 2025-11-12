@@ -114,3 +114,5 @@ export class SessionConcept {
   }
 }
 
+export default SessionConcept;
+

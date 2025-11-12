@@ -270,3 +270,5 @@ export class DesignPostConcept {
     return result.deletedCount === 1;
   }
 }
+
+export default DesignPostConcept;

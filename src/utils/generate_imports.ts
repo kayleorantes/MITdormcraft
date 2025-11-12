@@ -26,43 +26,71 @@ interface ConceptInfo {
 
 /**
  * Scans the base directory to find all valid concept implementations.
- * A valid concept is a directory named `{name}` containing a `{name}Concept.ts` file.
+ * A valid concept can be:
+ * 1. A directory named `{name}` containing a `{name}Concept.ts` file, OR
+ * 2. A flat file named `{name}.ts` or `{name}-{part}.ts` that exports a `{Name}Concept` class
  */
 async function discoverConcepts(baseDir: string): Promise<ConceptInfo[]> {
   const concepts: ConceptInfo[] = [];
   const absoluteBaseDir = path.resolve(baseDir);
 
   for await (const dirEntry of Deno.readDir(absoluteBaseDir)) {
-    if (!dirEntry.isDirectory) {
-      continue;
+    // Case 1: Directory-based concepts (e.g., Requesting/RequestingConcept.ts)
+    if (dirEntry.isDirectory) {
+      const conceptDirName = dirEntry.name;
+      const expectedFileName = `${conceptDirName}Concept.ts`;
+      const conceptFilePath = path.join(
+        absoluteBaseDir,
+        conceptDirName,
+        expectedFileName,
+      );
+
+      try {
+        await Deno.stat(conceptFilePath); // Check if file exists
+        const conceptName = conceptDirName.charAt(0).toUpperCase() +
+          conceptDirName.slice(1);
+
+        concepts.push({
+          name: conceptName,
+          dirName: conceptDirName,
+          importPath: `./${conceptDirName}/${expectedFileName}`,
+        });
+        console.log(`  -> Found concept: ${conceptName}`);
+      } catch (error) {
+        if (error instanceof Deno.errors.NotFound) {
+          // This directory doesn't contain a concept file, so we ignore it.
+        } else {
+          // Re-throw other unexpected errors.
+          throw error;
+        }
+      }
     }
+    // Case 2: Flat file concepts (e.g., design-post.ts, session.ts)
+    else if (dirEntry.isFile && dirEntry.name.endsWith(".ts")) {
+      // Skip generated files and test files
+      if (
+        dirEntry.name === "concepts.ts" ||
+        dirEntry.name === "test_concepts.ts" ||
+        dirEntry.name.endsWith(".test.ts")
+      ) {
+        continue;
+      }
 
-    const conceptDirName = dirEntry.name;
-    const expectedFileName = `${conceptDirName}Concept.ts`;
-    const conceptFilePath = path.join(
-      absoluteBaseDir,
-      conceptDirName,
-      expectedFileName,
-    );
-
-    try {
-      await Deno.stat(conceptFilePath); // Check if file exists
-      const conceptName = conceptDirName.charAt(0).toUpperCase() +
-        conceptDirName.slice(1);
+      // Convert file name to concept name
+      // design-post.ts -> DesignPost
+      // session.ts -> Session
+      const baseName = dirEntry.name.replace(/\.ts$/, "");
+      const conceptName = baseName
+        .split("-")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join("");
 
       concepts.push({
         name: conceptName,
-        dirName: conceptDirName,
-        importPath: `./${conceptDirName}/${expectedFileName}`,
+        dirName: baseName,
+        importPath: `./${dirEntry.name}`,
       });
       console.log(`  -> Found concept: ${conceptName}`);
-    } catch (error) {
-      if (error instanceof Deno.errors.NotFound) {
-        // This directory doesn't contain a concept file, so we ignore it.
-      } else {
-        // Re-throw other unexpected errors.
-        throw error;
-      }
     }
   }
   return concepts;

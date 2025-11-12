@@ -89,3 +89,5 @@ export class AuthHelperConcept {
   }
 }
 
+export default AuthHelperConcept;
+

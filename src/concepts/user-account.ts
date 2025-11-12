@@ -20,7 +20,7 @@ export interface User {
  * Implements the User concept.
  * Manages user profile data, but NOT authentication.
  */
-export class UserConcept {
+export class UserAccountConcept {
   private readonly users: Collection<User>;
 
   constructor(db: Db) {
@@ -113,3 +113,5 @@ export class UserConcept {
   // As per the design notes, user creation is handled by the
   // `AuthenticationConcept` to ensure separation of concerns.
 }
+
+export default UserAccountConcept;

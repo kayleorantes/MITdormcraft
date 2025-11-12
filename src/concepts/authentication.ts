@@ -109,3 +109,5 @@ export class AuthenticationConcept {
     return cred.userID.toHexString();
   }
 }
+
+export default AuthenticationConcept;
