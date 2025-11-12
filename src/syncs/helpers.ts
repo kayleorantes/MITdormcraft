@@ -12,16 +12,28 @@ export function sanitizeUser(user: User) {
   };
 }
 
-export function sanitizePost(post: Post) {
-  return {
-    postID: post._id.toHexString(),
-    authorID: post.authorID.toHexString(),
-    templateID: post.templateID.toHexString(),
+export function sanitizePost(post: Post | any) {
+  // Handle both Post type and enriched post objects with template data
+  const basePost = {
+    postID: post._id?.toHexString() || post.postID,
+    authorID: post.authorID?.toHexString ? post.authorID.toHexString() : post.authorID,
+    templateID: post.templateID?.toHexString ? post.templateID.toHexString() : post.templateID,
     title: post.title,
     description: post.description,
     imageURL: post.imageURL,
-    createdAt: post.createdAt.toISOString(),
+    createdAt: post.createdAt?.toISOString ? post.createdAt.toISOString() : post.createdAt,
   };
+  
+  // Include dormName and roomType if present
+  if (post.dormName !== undefined || post.roomType !== undefined) {
+    return {
+      ...basePost,
+      dormName: post.dormName || "",
+      roomType: post.roomType || "",
+    };
+  }
+  
+  return basePost;
 }
 
 export function sanitizeComment(comment: Comment) {

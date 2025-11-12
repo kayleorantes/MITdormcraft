@@ -1,4 +1,5 @@
 import { Collection, Db, ObjectId } from "npm:mongodb";
+import type { RoomTemplate } from "./room-template.ts";
 
 // --- Type Definitions ---
 export interface Post {
@@ -13,9 +14,11 @@ export interface Post {
 
 export class DesignPostConcept {
   private readonly posts: Collection<Post>;
+  private readonly templates: Collection<RoomTemplate>;
 
   constructor(db: Db) {
     this.posts = db.collection<Post>("posts");
+    this.templates = db.collection<RoomTemplate>("room_templates");
     // Create index on createdAt for efficient sorting
     this.posts.createIndex({ createdAt: -1 });
     // Create index on templateID for efficient filtering
@@ -63,6 +66,8 @@ export class DesignPostConcept {
     postID: string;
     authorID: string;
     templateID: string;
+    dormName: string;
+    roomType: string;
     title: string;
     description: string;
     imageURL: string;
@@ -74,12 +79,17 @@ export class DesignPostConcept {
     
     if (!post) return null;
     
+    // Fetch template information
+    const template = await this.templates.findOne({ _id: post.templateID });
+    
     // Serialize ObjectIds to strings for JSON response
     return {
       _id: post._id.toHexString(),
       postID: post._id.toHexString(), // Add postID for frontend compatibility
       authorID: post.authorID.toHexString(),
       templateID: post.templateID.toHexString(),
+      dormName: template?.dormName || "",
+      roomType: template?.roomType || "",
       title: post.title,
       description: post.description,
       imageURL: post.imageURL,
@@ -97,6 +107,8 @@ export class DesignPostConcept {
     postID: string;
     authorID: string;
     templateID: string;
+    dormName: string;
+    roomType: string;
     title: string;
     description: string;
     imageURL: string;
@@ -107,14 +119,33 @@ export class DesignPostConcept {
     const offset = Math.max(0, args?.offset ?? 0);
     const includeImages = args?.includeImages ?? true; // Include images by default
     
-    // Use projection to exclude imageURL if not needed (improves performance)
-    const projection = includeImages ? {} : { imageURL: 0 };
+    // Use aggregation to join with room templates
+    const pipeline: any[] = [
+      { $sort: { createdAt: -1 } }, // Sort newest first
+      { $skip: offset },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "room_templates",
+          localField: "templateID",
+          foreignField: "_id",
+          as: "template"
+        }
+      },
+      {
+        $unwind: {
+          path: "$template",
+          preserveNullAndEmptyArrays: true
+        }
+      }
+    ];
     
-    const posts = await this.posts.find({}, { projection })
-      .sort({ createdAt: -1 }) // Sort newest first
-      .skip(offset)
-      .limit(limit)
-      .toArray();
+    // Add projection to exclude imageURL if not needed
+    if (!includeImages) {
+      pipeline.push({ $project: { imageURL: 0 } });
+    }
+    
+    const posts = await this.posts.aggregate(pipeline).toArray();
     
     // Serialize ObjectIds to strings for JSON response
     return posts.map(post => ({
@@ -122,9 +153,11 @@ export class DesignPostConcept {
       postID: post._id.toHexString(), // Add postID for frontend compatibility
       authorID: post.authorID.toHexString(),
       templateID: post.templateID.toHexString(),
+      dormName: post.template?.dormName || "",
+      roomType: post.template?.roomType || "",
       title: post.title,
       description: post.description,
-      imageURL: includeImages ? post.imageURL : '', // Empty string if not included
+      imageURL: includeImages ? (post.imageURL || '') : '', // Empty string if not included
       createdAt: post.createdAt.toISOString(),
     }));
   }
@@ -138,6 +171,8 @@ export class DesignPostConcept {
     postID: string;
     authorID: string;
     templateID: string;
+    dormName: string;
+    roomType: string;
     title: string;
     description: string;
     imageURL: string;
@@ -148,11 +183,30 @@ export class DesignPostConcept {
     const limit = Math.max(1, Math.min(rawLimit, 200));
     const offset = Math.max(0, args?.offset ?? 0);
     if (!ObjectId.isValid(templateID)) return [];
-    const posts = await this.posts.find({ templateID: new ObjectId(templateID) })
-      .sort({ createdAt: -1 }) // Sort newest first
-      .skip(offset)
-      .limit(limit)
-      .toArray();
+    
+    // Use aggregation to join with room templates
+    const pipeline: any[] = [
+      { $match: { templateID: new ObjectId(templateID) } },
+      { $sort: { createdAt: -1 } }, // Sort newest first
+      { $skip: offset },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "room_templates",
+          localField: "templateID",
+          foreignField: "_id",
+          as: "template"
+        }
+      },
+      {
+        $unwind: {
+          path: "$template",
+          preserveNullAndEmptyArrays: true
+        }
+      }
+    ];
+    
+    const posts = await this.posts.aggregate(pipeline).toArray();
     
     // Serialize ObjectIds to strings for JSON response
     return posts.map(post => ({
@@ -160,6 +214,8 @@ export class DesignPostConcept {
       postID: post._id.toHexString(), // Add postID for frontend compatibility
       authorID: post.authorID.toHexString(),
       templateID: post.templateID.toHexString(),
+      dormName: post.template?.dormName || "",
+      roomType: post.template?.roomType || "",
       title: post.title,
       description: post.description,
       imageURL: post.imageURL,
@@ -176,6 +232,8 @@ export class DesignPostConcept {
     postID: string;
     authorID: string;
     templateID: string;
+    dormName: string;
+    roomType: string;
     title: string;
     description: string;
     imageURL: string;
@@ -186,11 +244,30 @@ export class DesignPostConcept {
     const limit = Math.max(1, Math.min(rawLimit, 200));
     const offset = Math.max(0, args?.offset ?? 0);
     if (!ObjectId.isValid(authorID)) return [];
-    const posts = await this.posts.find({ authorID: new ObjectId(authorID) })
-      .sort({ createdAt: -1 }) // Sort newest first
-      .skip(offset)
-      .limit(limit)
-      .toArray();
+    
+    // Use aggregation to join with room templates
+    const pipeline: any[] = [
+      { $match: { authorID: new ObjectId(authorID) } },
+      { $sort: { createdAt: -1 } }, // Sort newest first
+      { $skip: offset },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "room_templates",
+          localField: "templateID",
+          foreignField: "_id",
+          as: "template"
+        }
+      },
+      {
+        $unwind: {
+          path: "$template",
+          preserveNullAndEmptyArrays: true
+        }
+      }
+    ];
+    
+    const posts = await this.posts.aggregate(pipeline).toArray();
     
     // Serialize ObjectIds to strings for JSON response
     return posts.map(post => ({
@@ -198,6 +275,8 @@ export class DesignPostConcept {
       postID: post._id.toHexString(), // Add postID for frontend compatibility
       authorID: post.authorID.toHexString(),
       templateID: post.templateID.toHexString(),
+      dormName: post.template?.dormName || "",
+      roomType: post.template?.roomType || "",
       title: post.title,
       description: post.description,
       imageURL: post.imageURL,
